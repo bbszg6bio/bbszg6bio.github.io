@@ -3,720 +3,239 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Local Network Chat</title>
-    <link href="https://cdn.jsdelivr.net/npm/flowbite@1.6.5/dist/flowbite.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/flowbite@1.6.5/dist/flowbite.min.js"></script>
-    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <title>Free-For-All Chat</title>
+    <!-- Tailwind and Flowbite for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.0/flowbite.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.0/flowbite.min.js"></script>
     <style>
         :root {
             --primary-color: #5D5CDE;
-            --primary-hover: #4b4ab8;
-            --bg-light: #FFFFFF;
-            --bg-dark: #181818;
-            --text-light: #333333;
-            --text-dark: #E0E0E0;
         }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
+        
+        .chat-container {
+            height: calc(100vh - 180px);
+            max-height: 600px;
         }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            transition: background-color 0.3s, color 0.3s;
+        
+        .message {
+            animation: fadeIn 0.3s ease-in-out;
+            word-break: break-word;
         }
-
-        @media (prefers-color-scheme: light) {
-            body {
-                background-color: var(--bg-light);
-                color: var(--text-light);
-            }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-
+        
+        .timestamp {
+            font-size: 0.7rem;
+            margin-left: 5px;
+            opacity: 0.6;
+        }
+        
+        /* Dark mode support */
         @media (prefers-color-scheme: dark) {
             body {
-                background-color: var(--bg-dark);
-                color: var(--text-dark);
+                background-color: #181818;
+                color: #f0f0f0;
             }
-
-            .chat-container {
-                background-color: #222;
-                border-color: #333;
-            }
-
-            .message-input {
-                background-color: #333;
-                color: var(--text-dark);
-            }
-
-            .message-input::placeholder {
-                color: #999;
-            }
-
-            .user-list {
-                background-color: #222;
-                border-color: #333;
-            }
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 1rem;
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 1rem;
-        }
-
-        .main {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        @media (min-width: 768px) {
-            .main {
-                flex-direction: row;
-            }
-        }
-
-        .chat-container {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            height: 70vh;
-            border: 1px solid #e2e8f0;
-            border-radius: 0.5rem;
-            overflow: hidden;
-        }
-
-        .messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 1rem;
-        }
-
-        .message {
-            margin-bottom: 1rem;
-            padding: 0.75rem;
-            border-radius: 0.5rem;
-            max-width: 80%;
-            word-wrap: break-word;
-        }
-
-        .message.outgoing {
-            background-color: var(--primary-color);
-            color: white;
-            align-self: flex-end;
-            margin-left: auto;
-        }
-
-        .message.incoming {
-            background-color: #e2e8f0;
-            color: #333;
-            align-self: flex-start;
-        }
-
-        .message-input-container {
-            display: flex;
-            padding: 0.5rem;
-            border-top: 1px solid #e2e8f0;
-        }
-
-        .message-input {
-            flex: 1;
-            padding: 0.75rem;
-            border: 1px solid #e2e8f0;
-            border-radius: 0.25rem;
-            font-size: 16px;
-        }
-
-        .send-button {
-            margin-left: 0.5rem;
-            padding: 0.75rem 1rem;
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            border-radius: 0.25rem;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-
-        .send-button:hover {
-            background-color: var(--primary-hover);
-        }
-
-        .side-panel {
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        @media (min-width: 768px) {
-            .side-panel {
-                width: 280px;
-            }
-        }
-
-        .user-info {
-            padding: 1rem;
-            border: 1px solid #e2e8f0;
-            border-radius: 0.5rem;
-        }
-
-        .user-list {
-            flex: 1;
-            padding: 1rem;
-            border: 1px solid #e2e8f0;
-            border-radius: 0.5rem;
-            overflow-y: auto;
-        }
-
-        .user-item {
-            display: flex;
-            align-items: center;
-            padding: 0.5rem;
-            margin-bottom: 0.5rem;
-            border-radius: 0.25rem;
-            background-color: rgba(0, 0, 0, 0.05);
-        }
-
-        .user-status {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            margin-right: 0.5rem;
-        }
-
-        .status-online {
-            background-color: #10b981;
-        }
-
-        .status-offline {
-            background-color: #ef4444;
-        }
-
-        .user-name {
-            flex: 1;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .loading {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100%;
-            font-style: italic;
-            color: #666;
-        }
-
-        .system-message {
-            text-align: center;
-            margin: 0.5rem 0;
-            font-style: italic;
-            color: #666;
-        }
-
-        .error-message {
-            padding: 1rem;
-            background-color: #fee2e2;
-            color: #b91c1c;
-            border-radius: 0.25rem;
-            margin-bottom: 1rem;
-        }
-
-        .typing-indicator {
-            font-style: italic;
-            color: #666;
-            height: 1.5rem;
-            margin-top: 0.5rem;
         }
     </style>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1 class="text-2xl font-bold">Local Network Chat</h1>
-            <p class="text-sm mt-1">Chat with people on your local network</p>
-        </div>
-
-        <div id="errorContainer" class="error-message" style="display: none;"></div>
-
-        <div id="setup" class="mb-4">
-            <div class="flex flex-col sm:flex-row gap-2">
-                <input type="text" id="username" placeholder="Enter your username" class="message-input flex-1 text-base">
-                <button id="joinChat" class="send-button">Join Chat</button>
+<body class="bg-white dark:bg-gray-900 min-h-screen">
+    <div class="container mx-auto p-4 max-w-3xl">
+        <!-- Username selection screen -->
+        <div id="username-screen" class="flex flex-col items-center justify-center min-h-[80vh]">
+            <div class="w-full max-w-md p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
+                <h1 class="text-2xl font-bold text-center mb-6 text-gray-800 dark:text-white">Join the Chat</h1>
+                <div class="mb-4">
+                    <label for="username" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Choose a username</label>
+                    <input type="text" id="username" class="bg-gray-50 border border-gray-300 text-gray-900 text-base rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" 
+                           placeholder="Enter your username" maxlength="20" required>
+                    <p id="username-error" class="mt-2 text-sm text-red-600 dark:text-red-500 hidden">Please enter a valid username (3-20 characters).</p>
+                </div>
+                <button id="join-btn" class="w-full text-white bg-[var(--primary-color)] hover:bg-[#4b4ab2] focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
+                    Join Chat
+                </button>
             </div>
         </div>
 
-        <div id="chatInterface" class="main" style="display: none;">
-            <div class="chat-container">
-                <div id="messages" class="messages"></div>
-                <div id="typingIndicator" class="typing-indicator px-3"></div>
-                <div class="message-input-container">
-                    <input type="text" id="messageInput" class="message-input" placeholder="Type your message..." disabled>
-                    <button id="sendButton" class="send-button" disabled>Send</button>
-                </div>
-            </div>
-
-            <div class="side-panel">
-                <div class="user-info">
-                    <h2 class="font-bold mb-2">Your Info</h2>
-                    <p>Username: <span id="currentUsername">-</span></p>
-                    <p class="text-sm mt-2">Connection ID: <span id="connectionId" class="text-xs font-mono">-</span></p>
-                    <div class="mt-3">
-                        <button id="copyInviteLink" class="send-button w-full text-sm">Copy Invite Link</button>
+        <!-- Chat room screen (initially hidden) -->
+        <div id="chat-screen" class="hidden">
+            <div class="flex flex-col w-full">
+                <div class="flex items-center justify-between mb-4">
+                    <h1 class="text-xl font-semibold text-gray-800 dark:text-white">Free-For-All Chat</h1>
+                    <div class="flex items-center">
+                        <span class="text-sm text-gray-600 dark:text-gray-300 mr-2">Logged in as:</span>
+                        <span id="current-user" class="font-semibold text-[var(--primary-color)]"></span>
+                        <button id="change-username" class="ml-3 text-xs text-gray-600 dark:text-gray-400 hover:text-[var(--primary-color)] dark:hover:text-[var(--primary-color)]">
+                            Change
+                        </button>
                     </div>
                 </div>
-
-                <div class="user-list">
-                    <h2 class="font-bold mb-2">Users Online</h2>
-                    <div id="userList">
-                        <div class="loading">Connecting to network...</div>
+                
+                <div id="messages-container" class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 overflow-y-auto chat-container mb-4">
+                    <div class="flex justify-center p-4">
+                        <p class="text-gray-500 dark:text-gray-400 text-sm">Welcome to the chat! Messages appear here.</p>
                     </div>
+                </div>
+                
+                <div class="flex">
+                    <input type="text" id="message-input" class="bg-gray-50 border border-gray-300 text-gray-900 text-base rounded-lg rounded-r-none focus:ring-[var(--primary-color)] focus:border-[var(--primary-color)] block flex-1 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" 
+                           placeholder="Type your message...">
+                    <button id="send-btn" class="text-white bg-[var(--primary-color)] hover:bg-[#4b4ab2] focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg rounded-l-none text-sm px-5 py-2.5">
+                        Send
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Chat Room Application using WebRTC for peer-to-peer communication
-        document.addEventListener('DOMContentLoaded', () => {
-            // DOM Elements
-            const setupDiv = document.getElementById('setup');
-            const chatInterface = document.getElementById('chatInterface');
-            const usernameInput = document.getElementById('username');
-            const joinChatButton = document.getElementById('joinChat');
-            const messagesContainer = document.getElementById('messages');
-            const messageInput = document.getElementById('messageInput');
-            const sendButton = document.getElementById('sendButton');
-            const userListContainer = document.getElementById('userList');
-            const currentUsernameSpan = document.getElementById('currentUsername');
-            const connectionIdSpan = document.getElementById('connectionId');
-            const copyInviteLinkButton = document.getElementById('copyInviteLink');
-            const errorContainer = document.getElementById('errorContainer');
-            const typingIndicator = document.getElementById('typingIndicator');
-
-            // Application state
-            let peer;
-            let connections = {};
-            let username = '';
-            let peerId = '';
-            let isTyping = false;
-            let typingTimeout;
-            let connectedUsers = new Map();
+        // Chat state
+        const chatState = {
+            username: '',
+            messages: [],
+            users: new Set(),
+            isLoggedIn: false
+        };
+        
+        // DOM elements
+        const usernameScreen = document.getElementById('username-screen');
+        const chatScreen = document.getElementById('chat-screen');
+        const usernameInput = document.getElementById('username');
+        const usernameError = document.getElementById('username-error');
+        const joinBtn = document.getElementById('join-btn');
+        const currentUserSpan = document.getElementById('current-user');
+        const changeUsernameBtn = document.getElementById('change-username');
+        const messagesContainer = document.getElementById('messages-container');
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+        
+        // Functions
+        function validateUsername(username) {
+            return username && username.trim().length >= 3 && username.trim().length <= 20;
+        }
+        
+        function joinChat() {
+            const username = usernameInput.value.trim();
             
-            // Initialize the chat application
-            const initChat = () => {
-                username = usernameInput.value.trim();
-                
-                if (!username) {
-                    showError('Please enter a username');
-                    return;
-                }
-                
-                setupDiv.style.display = 'none';
-                chatInterface.style.display = 'flex';
-                currentUsernameSpan.textContent = username;
-                
-                // Initialize PeerJS
-                try {
-                    peer = new Peer(null, {
-                        debug: 2
-                    });
-                    
-                    // Handle when peer is created
-                    peer.on('open', id => {
-                        peerId = id;
-                        connectionIdSpan.textContent = id;
-                        messageInput.disabled = false;
-                        sendButton.disabled = false;
-                        
-                        addSystemMessage(`You've joined the chat as ${username}`);
-                        console.log('My peer ID is: ' + id);
-                    });
-                    
-                    // Handle incoming connections
-                    peer.on('connection', conn => {
-                        handleNewConnection(conn);
-                    });
-                    
-                    // Handle errors
-                    peer.on('error', err => {
-                        console.error('PeerJS error:', err);
-                        showError(`Connection error: ${err.type}`);
-                    });
-                    
-                } catch (err) {
-                    console.error('Failed to initialize PeerJS:', err);
-                    showError('Failed to initialize chat: ' + err.message);
-                }
-            };
+            if (!validateUsername(username)) {
+                usernameError.classList.remove('hidden');
+                return;
+            }
             
-            // Handle a new connection
-            const handleNewConnection = (conn) => {
-                // Store connection
-                connections[conn.peer] = conn;
-                
-                // Set up connection event handlers
-                setupConnectionHandlers(conn);
-                
-                // Send our user information
-                conn.on('open', () => {
-                    conn.send({
-                        type: 'user-info',
-                        username: username,
-                        id: peerId
-                    });
-                });
-            };
+            // Valid username
+            usernameError.classList.add('hidden');
+            chatState.username = username;
+            chatState.users.add(username);
+            chatState.isLoggedIn = true;
             
-            // Set up event handlers for a connection
-            const setupConnectionHandlers = (conn) => {
-                conn.on('data', data => {
-                    handleIncomingData(data, conn.peer);
-                });
-                
-                conn.on('close', () => {
-                    delete connections[conn.peer];
-                    removeUser(conn.peer);
-                    addSystemMessage(`${connectedUsers.get(conn.peer)?.username || 'A user'} has disconnected`);
-                });
-                
-                conn.on('error', err => {
-                    console.error('Connection error:', err);
-                    showError(`Error with connection to ${connectedUsers.get(conn.peer)?.username || 'a user'}: ${err.message}`);
-                });
-            };
+            // Update UI
+            currentUserSpan.textContent = username;
+            usernameScreen.classList.add('hidden');
+            chatScreen.classList.remove('hidden');
             
-            // Handle different types of incoming data
-            const handleIncomingData = (data, senderId) => {
-                if (data.type === 'message') {
-                    addMessage(data.username, data.content, false);
-                } 
-                else if (data.type === 'user-info') {
-                    addUser(senderId, data.username);
-                    addSystemMessage(`${data.username} has joined the chat`);
-                }
-                else if (data.type === 'typing') {
-                    updateTypingIndicator(data.username, data.isTyping);
-                }
-            };
-            
-            // Connect to a peer
-            const connectToPeer = (peerId) => {
-                if (connections[peerId]) {
-                    console.log('Already connected to', peerId);
-                    return;
-                }
-                
-                try {
-                    const conn = peer.connect(peerId);
-                    connections[peerId] = conn;
-                    
-                    setupConnectionHandlers(conn);
-                } catch (err) {
-                    console.error('Failed to connect to peer:', err);
-                    showError(`Failed to connect: ${err.message}`);
-                }
-            };
-            
-            // Send a message to all connected peers
-            const sendMessage = () => {
-                const message = messageInput.value.trim();
-                
-                if (!message) return;
-                
-                const messageData = {
-                    type: 'message',
-                    username: username,
-                    content: message,
-                    timestamp: Date.now()
-                };
-                
-                // Add message to our own chat
-                addMessage(username, message, true);
-                
-                // Send to all connections
-                Object.values(connections).forEach(conn => {
-                    if (conn.open) {
-                        conn.send(messageData);
-                    }
-                });
-                
-                // Clear the input
-                messageInput.value = '';
-                
-                // Send typing indicator that we stopped typing
-                sendTypingStatus(false);
-            };
-            
-            // Add a message to the chat display
-            const addMessage = (sender, content, isOutgoing) => {
-                const messageDiv = document.createElement('div');
-                messageDiv.className = `message ${isOutgoing ? 'outgoing' : 'incoming'}`;
-                
-                if (!isOutgoing) {
-                    const senderSpan = document.createElement('div');
-                    senderSpan.className = 'text-xs font-bold mb-1';
-                    senderSpan.textContent = sender;
-                    messageDiv.appendChild(senderSpan);
-                }
-                
-                const contentSpan = document.createElement('div');
-                contentSpan.textContent = content;
-                messageDiv.appendChild(contentSpan);
-                
-                messagesContainer.appendChild(messageDiv);
-                scrollToBottom();
-            };
-            
-            // Add a system message
-            const addSystemMessage = (message) => {
-                const systemDiv = document.createElement('div');
-                systemDiv.className = 'system-message';
-                systemDiv.textContent = message;
-                messagesContainer.appendChild(systemDiv);
-                scrollToBottom();
-            };
-            
-            // Add a user to the user list
-            const addUser = (id, username) => {
-                connectedUsers.set(id, { username, id });
-                updateUserList();
-            };
-            
-            // Remove a user from the user list
-            const removeUser = (id) => {
-                connectedUsers.delete(id);
-                updateUserList();
-            };
-            
-            // Update the user list display
-            const updateUserList = () => {
-                userListContainer.innerHTML = '';
-                
-                if (connectedUsers.size === 0) {
-                    const noUsersDiv = document.createElement('div');
-                    noUsersDiv.className = 'text-sm italic text-gray-500';
-                    noUsersDiv.textContent = 'No other users online';
-                    userListContainer.appendChild(noUsersDiv);
-                    return;
-                }
-                
-                connectedUsers.forEach(user => {
-                    const userDiv = document.createElement('div');
-                    userDiv.className = 'user-item';
-                    
-                    const statusSpan = document.createElement('span');
-                    statusSpan.className = 'user-status status-online';
-                    userDiv.appendChild(statusSpan);
-                    
-                    const nameSpan = document.createElement('span');
-                    nameSpan.className = 'user-name';
-                    nameSpan.textContent = user.username;
-                    userDiv.appendChild(nameSpan);
-                    
-                    userListContainer.appendChild(userDiv);
-                });
-            };
-            
-            // Send typing status to all connections
-            const sendTypingStatus = (isTyping) => {
-                const typingData = {
-                    type: 'typing',
-                    username: username,
-                    isTyping: isTyping
-                };
-                
-                Object.values(connections).forEach(conn => {
-                    if (conn.open) {
-                        conn.send(typingData);
-                    }
-                });
-            };
-            
-            // Update typing indicator
-            const updateTypingIndicator = (user, isTyping) => {
-                // Current users who are typing
-                const typingUsers = Array.from(connectedUsers.values())
-                    .filter(u => u.isTyping)
-                    .map(u => u.username);
-                
-                // Update status for the user
-                connectedUsers.forEach((value, key) => {
-                    if (value.username === user) {
-                        value.isTyping = isTyping;
-                    }
-                });
-                
-                if (typingUsers.length === 0) {
-                    typingIndicator.textContent = '';
-                } else if (typingUsers.length === 1) {
-                    typingIndicator.textContent = `${typingUsers[0]} is typing...`;
-                } else if (typingUsers.length === 2) {
-                    typingIndicator.textContent = `${typingUsers[0]} and ${typingUsers[1]} are typing...`;
-                } else {
-                    typingIndicator.textContent = 'Several people are typing...';
-                }
-            };
-            
-            // Show an error message
-            const showError = (message) => {
-                errorContainer.textContent = message;
-                errorContainer.style.display = 'block';
-                setTimeout(() => {
-                    errorContainer.style.display = 'none';
-                }, 5000);
-            };
-            
-            // Scroll messages container to bottom
-            const scrollToBottom = () => {
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            };
-
-            // Copy the invite link to clipboard
-            const copyInviteLink = () => {
-                if (!peerId) {
-                    showError('Your connection isn\'t ready yet');
-                    return;
-                }
-                
-                const inviteInfo = `Join my local chat! My connection ID is: ${peerId}`;
-                
-                try {
-                    // Use Clipboard API
-                    navigator.clipboard.writeText(inviteInfo).then(() => {
-                        const originalText = copyInviteLinkButton.textContent;
-                        copyInviteLinkButton.textContent = 'Copied!';
-                        setTimeout(() => {
-                            copyInviteLinkButton.textContent = originalText;
-                        }, 2000);
-                    }).catch(err => {
-                        console.error('Failed to copy:', err);
-                        showError('Failed to copy invite link');
-                    });
-                } catch (err) {
-                    console.error('Clipboard API not available:', err);
-                    // Fallback for browsers that don't support clipboard API
-                    const textarea = document.createElement('textarea');
-                    textarea.value = inviteInfo;
-                    document.body.appendChild(textarea);
-                    textarea.select();
-                    try {
-                        document.execCommand('copy');
-                        copyInviteLinkButton.textContent = 'Copied!';
-                        setTimeout(() => {
-                            copyInviteLinkButton.textContent = 'Copy Invite Link';
-                        }, 2000);
-                    } catch (err) {
-                        console.error('execCommand fallback failed:', err);
-                        showError('Failed to copy invite link');
-                    }
-                    document.body.removeChild(textarea);
-                }
-            };
-            
-            // Parse URL for connection ID
-            const parseUrlForConnectionId = () => {
-                try {
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const connectTo = urlParams.get('connect');
-                    if (connectTo) {
-                        return connectTo;
-                    }
-                } catch (err) {
-                    console.error('Failed to parse URL parameters:', err);
-                }
-                return null;
-            };
-
-            // Event Listeners
-            joinChatButton.addEventListener('click', () => {
-                initChat();
-                
-                // Check if we should connect to someone
-                const connectTo = parseUrlForConnectionId();
-                if (connectTo) {
-                    setTimeout(() => {
-                        connectToPeer(connectTo);
-                        addSystemMessage(`Connecting to peer: ${connectTo}`);
-                    }, 1000); // Give peer some time to initialize
-                }
+            // Add system message
+            addMessage({
+                sender: 'System',
+                content: `${username} has joined the chat`,
+                timestamp: new Date(),
+                isSystem: true
             });
             
-            usernameInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    joinChatButton.click();
-                }
-            });
+            // Focus on message input
+            messageInput.focus();
+        }
+        
+        function sendMessage() {
+            const content = messageInput.value.trim();
             
-            sendButton.addEventListener('click', sendMessage);
+            if (!content) return;
             
-            messageInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    sendMessage();
-                } else if (!isTyping) {
-                    isTyping = true;
-                    sendTypingStatus(true);
-                }
-                
-                // Reset typing timeout
-                clearTimeout(typingTimeout);
-                typingTimeout = setTimeout(() => {
-                    if (isTyping) {
-                        isTyping = false;
-                        sendTypingStatus(false);
-                    }
-                }, 3000);
-            });
+            const message = {
+                sender: chatState.username,
+                content: content,
+                timestamp: new Date(),
+                isSystem: false
+            };
             
-            copyInviteLinkButton.addEventListener('click', copyInviteLink);
-
-            // Add connect to peer functionality with a connect form
-            const addConnectToPeerUI = () => {
-                const connectForm = document.createElement('div');
-                connectForm.innerHTML = `
-                    <div class="mt-3 flex flex-col sm:flex-row gap-2">
-                        <input type="text" id="peerIdInput" placeholder="Enter connection ID to connect" class="message-input flex-1 text-base">
-                        <button id="connectButton" class="send-button">Connect</button>
+            addMessage(message);
+            messageInput.value = '';
+            messageInput.focus();
+        }
+        
+        function formatTime(date) {
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+        
+        function addMessage(message) {
+            chatState.messages.push(message);
+            
+            const messageEl = document.createElement('div');
+            messageEl.classList.add('message', 'mb-3');
+            
+            if (message.isSystem) {
+                messageEl.innerHTML = `
+                    <div class="p-2 rounded bg-gray-100 dark:bg-gray-700 inline-block">
+                        <span class="font-medium text-gray-500 dark:text-gray-400">${message.content}</span>
+                        <span class="timestamp text-gray-400 dark:text-gray-500">${formatTime(message.timestamp)}</span>
                     </div>
                 `;
-                document.getElementById('setup').appendChild(connectForm);
+            } else {
+                const isCurrentUser = message.sender === chatState.username;
                 
-                document.getElementById('connectButton').addEventListener('click', () => {
-                    const peerIdToConnect = document.getElementById('peerIdInput').value.trim();
-                    if (peerIdToConnect) {
-                        initChat();
-                        setTimeout(() => {
-                            connectToPeer(peerIdToConnect);
-                            addSystemMessage(`Connecting to peer: ${peerIdToConnect}`);
-                        }, 1000);
-                    } else {
-                        showError('Please enter a connection ID');
-                    }
-                });
-                
-                document.getElementById('peerIdInput').addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        document.getElementById('connectButton').click();
-                    }
-                });
-            };
+                messageEl.innerHTML = `
+                    <div class="flex ${isCurrentUser ? 'justify-end' : 'justify-start'}">
+                        <div class="p-2 rounded-lg ${isCurrentUser ? 'bg-[var(--primary-color)] text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white'} max-w-[80%]">
+                            ${!isCurrentUser ? `<span class="font-bold">${message.sender}:</span> ` : ''}
+                            <span>${message.content}</span>
+                            <span class="timestamp ${isCurrentUser ? 'text-gray-200' : 'text-gray-500 dark:text-gray-400'}">${formatTime(message.timestamp)}</span>
+                        </div>
+                    </div>
+                `;
+            }
             
-            // Add the connect to peer UI
-            addConnectToPeerUI();
+            messagesContainer.appendChild(messageEl);
             
-            // Focus the username input
-            usernameInput.focus();
+            // Scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        function changeUsername() {
+            // Add a leaving message
+            addMessage({
+                sender: 'System',
+                content: `${chatState.username} has left the chat`,
+                timestamp: new Date(),
+                isSystem: true
+            });
+            
+            // Reset state and show username screen
+            chatState.isLoggedIn = false;
+            usernameInput.value = '';
+            usernameScreen.classList.remove('hidden');
+            chatScreen.classList.add('hidden');
+        }
+        
+        // Event listeners
+        joinBtn.addEventListener('click', joinChat);
+        
+        usernameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') joinChat();
         });
+        
+        sendBtn.addEventListener('click', sendMessage);
+        
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+        
+        changeUsernameBtn.addEventListener('click', changeUsername);
+        
+        // Focus username input when page loads
+        usernameInput.focus();
     </script>
 </body>
 </html>
