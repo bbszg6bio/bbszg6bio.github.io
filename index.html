@@ -8,6 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.0/flowbite.min.css" rel="stylesheet" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.0/flowbite.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
         :root {
             --primary-color: #5D5CDE;
@@ -34,6 +35,14 @@
             opacity: 0.6;
         }
         
+        .user-indicator {
+            height: 8px;
+            width: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+        }
+        
         /* Dark mode support */
         @media (prefers-color-scheme: dark) {
             body {
@@ -58,6 +67,7 @@
                 <button id="join-btn" class="w-full text-white bg-[var(--primary-color)] hover:bg-[#4b4ab2] focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
                     Join Chat
                 </button>
+                <div id="connection-status" class="mt-4 text-center text-sm text-gray-500 dark:text-gray-400"></div>
             </div>
         </div>
 
@@ -75,6 +85,11 @@
                     </div>
                 </div>
                 
+                <div class="flex items-center space-x-2 mb-2">
+                    <span class="text-sm text-gray-600 dark:text-gray-300">Online:</span>
+                    <div id="online-users" class="flex flex-wrap gap-1"></div>
+                </div>
+                
                 <div id="messages-container" class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 overflow-y-auto chat-container mb-4">
                     <div class="flex justify-center p-4">
                         <p class="text-gray-500 dark:text-gray-400 text-sm">Welcome to the chat! Messages appear here.</p>
@@ -90,20 +105,26 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Loading indicator (initially hidden) -->
+        <div id="loading-screen" class="flex flex-col items-center justify-center min-h-[80vh] hidden">
+            <div role="status" class="mb-4">
+                <svg aria-hidden="true" class="w-12 h-12 text-gray-200 animate-spin dark:text-gray-600 fill-[var(--primary-color)]" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor"/>
+                    <path d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z" fill="currentFill"/>
+                </svg>
+                <span class="sr-only">Loading...</span>
+            </div>
+            <p class="text-gray-700 dark:text-gray-300">Connecting to chat server...</p>
+        </div>
     </div>
 
     <script>
-        // Chat state
-        const chatState = {
-            username: '',
-            messages: [],
-            users: new Set(),
-            isLoggedIn: false
-        };
-        
         // DOM elements
         const usernameScreen = document.getElementById('username-screen');
         const chatScreen = document.getElementById('chat-screen');
+        const loadingScreen = document.getElementById('loading-screen');
+        const connectionStatus = document.getElementById('connection-status');
         const usernameInput = document.getElementById('username');
         const usernameError = document.getElementById('username-error');
         const joinBtn = document.getElementById('join-btn');
@@ -112,12 +133,434 @@
         const messagesContainer = document.getElementById('messages-container');
         const messageInput = document.getElementById('message-input');
         const sendBtn = document.getElementById('send-btn');
+        const onlineUsers = document.getElementById('online-users');
         
-        // Functions
+        // Chat state
+        const chatState = {
+            username: '',
+            userId: null,
+            isLoggedIn: false,
+            messages: [],
+            users: {},
+            peer: null,
+            connections: [],
+            hostConnection: null,
+            isHost: false,
+            connectedToHost: false,
+            colors: {},
+            nextColor: 0,
+            // Available colors for user indicators
+            colorPalette: [
+                '#FF5733', '#33FF57', '#3357FF', '#F033FF', '#FF33A8', 
+                '#33FFF0', '#FFF033', '#FF8333', '#33FF83', '#8333FF'
+            ]
+        };
+        
+        // Generate a random ID to use for this user
+        function generateUserId() {
+            return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        }
+        
+        // Initialize PeerJS connection
+        function initPeer() {
+            // Show loading screen
+            usernameScreen.classList.add('hidden');
+            loadingScreen.classList.remove('hidden');
+            
+            // Create a unique ID for this user
+            chatState.userId = generateUserId();
+            
+            connectionStatus.textContent = 'Connecting to server...';
+            
+            // Initialize the PeerJS connection
+            chatState.peer = new Peer(chatState.userId);
+            
+            // Handle connection to PeerJS server
+            chatState.peer.on('open', (id) => {
+                console.log('Connected to server with ID:', id);
+                connectionStatus.textContent = 'Connected! Joining chat...';
+                
+                // Try to connect to the "host" peer
+                findHost();
+            });
+            
+            // Handle connection errors
+            chatState.peer.on('error', (err) => {
+                console.error('PeerJS error:', err);
+                if (err.type === 'peer-unavailable') {
+                    // If no host is found, become the host
+                    if (!chatState.isHost && !chatState.connectedToHost) {
+                        becomeHost();
+                    }
+                } else {
+                    connectionStatus.textContent = 'Connection error. Please try again.';
+                    loadingScreen.classList.add('hidden');
+                    usernameScreen.classList.remove('hidden');
+                }
+            });
+            
+            // Handle incoming connections
+            chatState.peer.on('connection', (conn) => {
+                console.log('Incoming connection from:', conn.peer);
+                handleNewConnection(conn);
+            });
+        }
+        
+        // Try to find a host to connect to
+        function findHost() {
+            try {
+                // Try to connect to the "host" peer
+                // Just using "host" as a convention - in a real app, you'd use a signaling server
+                const hostConnection = chatState.peer.connect('host', {
+                    reliable: true
+                });
+                
+                hostConnection.on('open', () => {
+                    console.log('Connected to host!');
+                    chatState.hostConnection = hostConnection;
+                    chatState.connectedToHost = true;
+                    
+                    // Now that we're connected, send our username to join the chat
+                    hostConnection.send({
+                        type: 'join',
+                        username: chatState.username,
+                        userId: chatState.userId,
+                        timestamp: new Date().toISOString()
+                    });
+                    
+                    // Handle data from the host
+                    hostConnection.on('data', handlePeerMessage);
+                    
+                    // Handle connection close
+                    hostConnection.on('close', () => {
+                        console.log('Host connection closed');
+                        chatState.connectedToHost = false;
+                        
+                        // Try to become the host
+                        becomeHost();
+                    });
+                });
+                
+                hostConnection.on('error', (err) => {
+                    console.error('Error connecting to host:', err);
+                    // If we can't connect to a host, become the host
+                    becomeHost();
+                });
+            } catch (err) {
+                console.error('Error finding host:', err);
+                becomeHost();
+            }
+        }
+        
+        // Become the host peer
+        function becomeHost() {
+            if (chatState.isHost || chatState.connectedToHost) return;
+            
+            console.log('Becoming host');
+            
+            // Close the current peer connection
+            if (chatState.peer) {
+                chatState.peer.destroy();
+            }
+            
+            // Create a new peer with the ID "host"
+            chatState.peer = new Peer('host');
+            
+            chatState.peer.on('open', (id) => {
+                console.log('Now hosting as:', id);
+                chatState.isHost = true;
+                
+                // Show the chat UI now that we're connected
+                loadingScreen.classList.add('hidden');
+                chatScreen.classList.remove('hidden');
+                
+                // Add ourselves to the user list
+                addUser(chatState.userId, chatState.username);
+                
+                // Add a system message
+                addMessage({
+                    sender: 'System',
+                    content: `You have created a new chat room as ${chatState.username}`,
+                    timestamp: new Date().toISOString(),
+                    isSystem: true
+                });
+            });
+            
+            // Handle incoming connections as the host
+            chatState.peer.on('connection', (conn) => {
+                console.log('Host received connection from:', conn.peer);
+                handleNewConnection(conn);
+            });
+            
+            // Handle host errors
+            chatState.peer.on('error', (err) => {
+                console.error('Host error:', err);
+                
+                // If we get an 'unavailable-id' error, someone else is already hosting
+                if (err.type === 'unavailable-id') {
+                    // Try to connect to that host instead
+                    chatState.isHost = false;
+                    initPeer();
+                }
+            });
+        }
+        
+        // Handle a new peer connection
+        function handleNewConnection(conn) {
+            // Add the connection to our list
+            chatState.connections.push(conn);
+            
+            // Handle data from this peer
+            conn.on('open', () => {
+                console.log('Connection open to:', conn.peer);
+                
+                // If we're the host and this is a new connection,
+                // send them the current state of the chat
+                if (chatState.isHost) {
+                    console.log('Sending current state to new peer');
+                    conn.send({
+                        type: 'init',
+                        users: chatState.users,
+                        messages: chatState.messages,
+                        colors: chatState.colors,
+                        timestamp: new Date().toISOString()
+                    });
+                }
+            });
+            
+            // Handle messages from this peer
+            conn.on('data', (data) => {
+                handlePeerMessage(data, conn);
+            });
+            
+            // Handle disconnection
+            conn.on('close', () => {
+                console.log('Connection closed to:', conn.peer);
+                
+                // Remove the connection from our list
+                chatState.connections = chatState.connections.filter(c => c !== conn);
+                
+                // If we're the host, inform others about the disconnection
+                if (chatState.isHost) {
+                    const userId = conn.peer;
+                    const username = chatState.users[userId];
+                    
+                    if (username) {
+                        // Remove the user
+                        delete chatState.users[userId];
+                        
+                        // Add a system message about the user leaving
+                        const leaveMessage = {
+                            type: 'leave',
+                            userId: userId,
+                            username: username,
+                            timestamp: new Date().toISOString()
+                        };
+                        
+                        // Process the leave message ourselves
+                        processLeaveMessage(leaveMessage);
+                        
+                        // Send to all other peers
+                        broadcastToPeers(leaveMessage);
+                        
+                        // Update the UI
+                        updateOnlineUsers();
+                    }
+                }
+            });
+        }
+        
+        // Handle a message from a peer
+        function handlePeerMessage(data, sourceConn = null) {
+            console.log('Received peer message:', data);
+            
+            switch (data.type) {
+                case 'chat':
+                    // Add the message to our chat
+                    addMessage({
+                        sender: data.username,
+                        content: data.content,
+                        timestamp: data.timestamp,
+                        userId: data.userId,
+                        isSystem: false
+                    });
+                    
+                    // If we're the host, broadcast this message to all other peers
+                    if (chatState.isHost && sourceConn) {
+                        broadcastToPeers(data, sourceConn);
+                    }
+                    break;
+                    
+                case 'join':
+                    // A new user is joining
+                    if (chatState.isHost) {
+                        // Add the user to our list
+                        addUser(data.userId, data.username);
+                        
+                        // Send a system message
+                        const joinMessage = {
+                            type: 'system',
+                            content: `${data.username} has joined the chat`,
+                            timestamp: data.timestamp,
+                            isSystem: true
+                        };
+                        
+                        // Add the message locally
+                        addMessage({
+                            sender: 'System',
+                            content: joinMessage.content,
+                            timestamp: joinMessage.timestamp,
+                            isSystem: true
+                        });
+                        
+                        // Broadcast to all peers
+                        broadcastToPeers(joinMessage);
+                        
+                        // Also broadcast the updated user list
+                        broadcastToPeers({
+                            type: 'users',
+                            users: chatState.users,
+                            colors: chatState.colors,
+                            timestamp: new Date().toISOString()
+                        });
+                    }
+                    break;
+                    
+                case 'init':
+                    // We're receiving the initial state of the chat
+                    if (!chatState.isHost) {
+                        // Set the users and messages
+                        chatState.users = data.users;
+                        chatState.colors = data.colors;
+                        
+                        // Add all messages
+                        data.messages.forEach(msg => {
+                            addMessage(msg, false); // Don't re-broadcast these messages
+                        });
+                        
+                        // Update the UI
+                        updateOnlineUsers();
+                        
+                        // Show the chat UI
+                        loadingScreen.classList.add('hidden');
+                        chatScreen.classList.remove('hidden');
+                        
+                        // Send a join message to others via the host
+                        chatState.hostConnection.send({
+                            type: 'join',
+                            username: chatState.username,
+                            userId: chatState.userId,
+                            timestamp: new Date().toISOString()
+                        });
+                    }
+                    break;
+                    
+                case 'system':
+                    // System message
+                    addMessage({
+                        sender: 'System',
+                        content: data.content,
+                        timestamp: data.timestamp,
+                        isSystem: true
+                    });
+                    
+                    // If we're the host, broadcast this message
+                    if (chatState.isHost && sourceConn) {
+                        broadcastToPeers(data, sourceConn);
+                    }
+                    break;
+                    
+                case 'leave':
+                    // A user is leaving
+                    processLeaveMessage(data);
+                    
+                    // If we're the host, broadcast this message
+                    if (chatState.isHost && sourceConn) {
+                        broadcastToPeers(data, sourceConn);
+                    }
+                    break;
+                    
+                case 'users':
+                    // Update to the user list
+                    if (!chatState.isHost) {
+                        chatState.users = data.users;
+                        chatState.colors = data.colors;
+                        updateOnlineUsers();
+                    }
+                    break;
+            }
+        }
+        
+        // Process a leave message
+        function processLeaveMessage(data) {
+            // Remove the user from our list
+            if (chatState.users[data.userId]) {
+                delete chatState.users[data.userId];
+                
+                // Add a system message
+                addMessage({
+                    sender: 'System',
+                    content: `${data.username} has left the chat`,
+                    timestamp: data.timestamp,
+                    isSystem: true
+                });
+                
+                // Update the UI
+                updateOnlineUsers();
+            }
+        }
+        
+        // Broadcast a message to all connected peers
+        function broadcastToPeers(data, exceptConn = null) {
+            if (!chatState.isHost) return;
+            
+            chatState.connections.forEach(conn => {
+                if (conn !== exceptConn && conn.open) {
+                    conn.send(data);
+                }
+            });
+        }
+        
+        // Add a user to the chat
+        function addUser(userId, username) {
+            chatState.users[userId] = username;
+            
+            // Assign a color if needed
+            if (!chatState.colors[userId]) {
+                const colorIndex = chatState.nextColor % chatState.colorPalette.length;
+                chatState.colors[userId] = chatState.colorPalette[colorIndex];
+                chatState.nextColor++;
+            }
+            
+            // Update the UI
+            updateOnlineUsers();
+        }
+        
+        // Update the online users display
+        function updateOnlineUsers() {
+            onlineUsers.innerHTML = '';
+            
+            Object.entries(chatState.users).forEach(([userId, username]) => {
+                const userElement = document.createElement('div');
+                userElement.classList.add('flex', 'items-center', 'mr-2', 'bg-gray-100', 'dark:bg-gray-700', 'px-2', 'py-1', 'rounded-full', 'text-xs');
+                
+                const indicator = document.createElement('span');
+                indicator.classList.add('user-indicator');
+                indicator.style.backgroundColor = chatState.colors[userId] || '#ccc';
+                
+                userElement.appendChild(indicator);
+                userElement.appendChild(document.createTextNode(username));
+                
+                onlineUsers.appendChild(userElement);
+            });
+        }
+        
+        // Validate username
         function validateUsername(username) {
             return username && username.trim().length >= 3 && username.trim().length <= 20;
         }
         
+        // Join the chat
         function joinChat() {
             const username = usernameInput.value.trim();
             
@@ -129,49 +572,59 @@
             // Valid username
             usernameError.classList.add('hidden');
             chatState.username = username;
-            chatState.users.add(username);
-            chatState.isLoggedIn = true;
             
-            // Update UI
-            currentUserSpan.textContent = username;
-            usernameScreen.classList.add('hidden');
-            chatScreen.classList.remove('hidden');
-            
-            // Add system message
-            addMessage({
-                sender: 'System',
-                content: `${username} has joined the chat`,
-                timestamp: new Date(),
-                isSystem: true
-            });
-            
-            // Focus on message input
-            messageInput.focus();
+            // Initialize PeerJS
+            initPeer();
         }
         
+        // Send a chat message
         function sendMessage() {
             const content = messageInput.value.trim();
             
-            if (!content) return;
+            if (!content || !chatState.isLoggedIn) return;
             
             const message = {
-                sender: chatState.username,
+                type: 'chat',
+                userId: chatState.userId,
+                username: chatState.username,
                 content: content,
-                timestamp: new Date(),
-                isSystem: false
+                timestamp: new Date().toISOString()
             };
             
-            addMessage(message);
+            // Add message to our own chat
+            addMessage({
+                sender: chatState.username,
+                content: content,
+                timestamp: message.timestamp,
+                userId: chatState.userId,
+                isSystem: false
+            });
+            
+            // Send to peers
+            if (chatState.isHost) {
+                broadcastToPeers(message);
+            } else if (chatState.hostConnection && chatState.hostConnection.open) {
+                chatState.hostConnection.send(message);
+            }
+            
+            // Clear input
             messageInput.value = '';
             messageInput.focus();
         }
         
-        function formatTime(date) {
+        // Format timestamp
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
             return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         }
         
-        function addMessage(message) {
-            chatState.messages.push(message);
+        // Add a message to the chat
+        function addMessage(message, storeMessage = true) {
+            if (storeMessage) {
+                chatState.messages.push(message);
+            }
+            
+            chatState.isLoggedIn = true;
             
             const messageEl = document.createElement('div');
             messageEl.classList.add('message', 'mb-3');
@@ -184,12 +637,17 @@
                     </div>
                 `;
             } else {
-                const isCurrentUser = message.sender === chatState.username;
+                const isCurrentUser = message.userId === chatState.userId;
+                const userColor = chatState.colors[message.userId] || '#ccc';
                 
                 messageEl.innerHTML = `
                     <div class="flex ${isCurrentUser ? 'justify-end' : 'justify-start'}">
                         <div class="p-2 rounded-lg ${isCurrentUser ? 'bg-[var(--primary-color)] text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white'} max-w-[80%]">
-                            ${!isCurrentUser ? `<span class="font-bold">${message.sender}:</span> ` : ''}
+                            ${!isCurrentUser ? `
+                                <div class="flex items-center mb-1">
+                                    <span class="user-indicator" style="background-color: ${userColor}"></span>
+                                    <span class="font-bold">${message.sender}</span>
+                                </div>` : ''}
                             <span>${message.content}</span>
                             <span class="timestamp ${isCurrentUser ? 'text-gray-200' : 'text-gray-500 dark:text-gray-400'}">${formatTime(message.timestamp)}</span>
                         </div>
@@ -203,20 +661,61 @@
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
         
+        // Change username
         function changeUsername() {
             // Add a leaving message
-            addMessage({
-                sender: 'System',
-                content: `${chatState.username} has left the chat`,
-                timestamp: new Date(),
-                isSystem: true
+            const leaveMessage = {
+                type: 'leave',
+                userId: chatState.userId,
+                username: chatState.username,
+                timestamp: new Date().toISOString()
+            };
+            
+            // Send leave message to peers
+            if (chatState.isHost) {
+                broadcastToPeers(leaveMessage);
+                
+                // Remove ourselves from the user list
+                delete chatState.users[chatState.userId];
+                updateOnlineUsers();
+            } else if (chatState.hostConnection && chatState.hostConnection.open) {
+                chatState.hostConnection.send(leaveMessage);
+            }
+            
+            // Close connections
+            chatState.connections.forEach(conn => {
+                if (conn.open) {
+                    conn.close();
+                }
             });
+            
+            if (chatState.hostConnection && chatState.hostConnection.open) {
+                chatState.hostConnection.close();
+            }
+            
+            if (chatState.peer) {
+                chatState.peer.destroy();
+            }
             
             // Reset state and show username screen
             chatState.isLoggedIn = false;
+            chatState.isHost = false;
+            chatState.connectedToHost = false;
+            chatState.connections = [];
+            chatState.hostConnection = null;
+            chatState.messages = [];
+            chatState.users = {};
+            chatState.colors = {};
+            chatState.nextColor = 0;
+            
+            // Update UI
             usernameInput.value = '';
-            usernameScreen.classList.remove('hidden');
+            messagesContainer.innerHTML = '<div class="flex justify-center p-4"><p class="text-gray-500 dark:text-gray-400 text-sm">Welcome to the chat! Messages appear here.</p></div>';
+            onlineUsers.innerHTML = '';
+            
             chatScreen.classList.add('hidden');
+            usernameScreen.classList.remove('hidden');
+            connectionStatus.textContent = '';
         }
         
         // Event listeners
@@ -234,8 +733,42 @@
         
         changeUsernameBtn.addEventListener('click', changeUsername);
         
+        // Update current user display
+        function updateCurrentUser() {
+            currentUserSpan.textContent = chatState.username;
+        }
+        
         // Focus username input when page loads
         usernameInput.focus();
+        
+        // Add a window beforeunload event to handle closing the tab
+        window.addEventListener('beforeunload', () => {
+            // If logged in, try to send a leave message
+            if (chatState.isLoggedIn) {
+                const leaveMessage = {
+                    type: 'leave',
+                    userId: chatState.userId,
+                    username: chatState.username,
+                    timestamp: new Date().toISOString()
+                };
+                
+                // Send leave message to peers
+                if (chatState.isHost) {
+                    broadcastToPeers(leaveMessage);
+                } else if (chatState.hostConnection && chatState.hostConnection.open) {
+                    try {
+                        chatState.hostConnection.send(leaveMessage);
+                    } catch (e) {
+                        // Ignore errors during page unload
+                    }
+                }
+                
+                // Close connections
+                if (chatState.peer) {
+                    chatState.peer.destroy();
+                }
+            }
+        });
     </script>
 </body>
 </html>
