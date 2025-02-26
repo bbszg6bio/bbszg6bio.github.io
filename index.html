@@ -1,59 +1,722 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gland System</title>
-  <link rel="stylesheet" href="style-home.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local Network Chat</title>
+    <link href="https://cdn.jsdelivr.net/npm/flowbite@1.6.5/dist/flowbite.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/flowbite@1.6.5/dist/flowbite.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #5D5CDE;
+            --primary-hover: #4b4ab8;
+            --bg-light: #FFFFFF;
+            --bg-dark: #181818;
+            --text-light: #333333;
+            --text-dark: #E0E0E0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        @media (prefers-color-scheme: light) {
+            body {
+                background-color: var(--bg-light);
+                color: var(--text-light);
+            }
+        }
+
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: var(--bg-dark);
+                color: var(--text-dark);
+            }
+
+            .chat-container {
+                background-color: #222;
+                border-color: #333;
+            }
+
+            .message-input {
+                background-color: #333;
+                color: var(--text-dark);
+            }
+
+            .message-input::placeholder {
+                color: #999;
+            }
+
+            .user-list {
+                background-color: #222;
+                border-color: #333;
+            }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .main {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        @media (min-width: 768px) {
+            .main {
+                flex-direction: row;
+            }
+        }
+
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 70vh;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+
+        .message {
+            margin-bottom: 1rem;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+
+        .message.outgoing {
+            background-color: var(--primary-color);
+            color: white;
+            align-self: flex-end;
+            margin-left: auto;
+        }
+
+        .message.incoming {
+            background-color: #e2e8f0;
+            color: #333;
+            align-self: flex-start;
+        }
+
+        .message-input-container {
+            display: flex;
+            padding: 0.5rem;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 0.75rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.25rem;
+            font-size: 16px;
+        }
+
+        .send-button {
+            margin-left: 0.5rem;
+            padding: 0.75rem 1rem;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .send-button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .side-panel {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        @media (min-width: 768px) {
+            .side-panel {
+                width: 280px;
+            }
+        }
+
+        .user-info {
+            padding: 1rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+        }
+
+        .user-list {
+            flex: 1;
+            padding: 1rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            overflow-y: auto;
+        }
+
+        .user-item {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem;
+            margin-bottom: 0.5rem;
+            border-radius: 0.25rem;
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+
+        .user-status {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+
+        .status-online {
+            background-color: #10b981;
+        }
+
+        .status-offline {
+            background-color: #ef4444;
+        }
+
+        .user-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            font-style: italic;
+            color: #666;
+        }
+
+        .system-message {
+            text-align: center;
+            margin: 0.5rem 0;
+            font-style: italic;
+            color: #666;
+        }
+
+        .error-message {
+            padding: 1rem;
+            background-color: #fee2e2;
+            color: #b91c1c;
+            border-radius: 0.25rem;
+            margin-bottom: 1rem;
+        }
+
+        .typing-indicator {
+            font-style: italic;
+            color: #666;
+            height: 1.5rem;
+            margin-top: 0.5rem;
+        }
+    </style>
 </head>
 <body>
-  <header>
-    <h1>Gland System</h1>
-  </header>
+    <div class="container">
+        <div class="header">
+            <h1 class="text-2xl font-bold">Local Network Chat</h1>
+            <p class="text-sm mt-1">Chat with people on your local network</p>
+        </div>
 
-  <section class="container">
-    <h2>Weekly message from founder:<br></h2>
-    <b>
-    <p>Hi guys, I have met with the founders of frank2023fantastic and we have came to a deal that we will merge. This website will still be here, but you can go to my website on theirs and <a href="https://frank2023fantastic.github.io/">theirs on mine</a>. Hope you have a good day!</p>
-    <p>----Benjamin Lu-Founder of BBSZG6BIO&copy;, Harry Wang-Co-Founder of frank2023fantastic&trade;, and Frank Xu-Founder of Frank2023Fantastic &trade;</p>
-    <p>Without further adue, let's jump in to the gland system!</p>
-    </b>
-    <p>The human gland system consists of several glands that produce and secrete hormones, which are chemical messengers that regulate various bodily functions. Let's explore some of the major glands and how they work together:</p>
+        <div id="errorContainer" class="error-message" style="display: none;"></div>
 
-    <h3>Pituitary Gland</h3>
-    <p>The pituitary gland, often referred to as the "master gland," is located at the base of the brain. It secretes hormones that control the functions of other endocrine glands. It produces growth hormone (GH), which regulates growth and development, as well as hormones that control the thyroid, adrenal glands, and reproductive organs. The pituitary gland also plays a vital role in regulating body temperature, blood pressure, and water balance.</p>
+        <div id="setup" class="mb-4">
+            <div class="flex flex-col sm:flex-row gap-2">
+                <input type="text" id="username" placeholder="Enter your username" class="message-input flex-1 text-base">
+                <button id="joinChat" class="send-button">Join Chat</button>
+            </div>
+        </div>
 
-    <h3>Thyroid Gland</h3>
-    <p>The thyroid gland is situated in the front of the neck, just below the Adam's apple. It produces hormones called thyroxine (T4) and triiodothyronine (T3), which regulate metabolism, energy production, and growth. Thyroid hormones influence the functioning of various organs and systems, including the heart, brain, muscles, and digestive system. They also contribute to maintaining body temperature, controlling weight, and promoting proper development in children.</p>
+        <div id="chatInterface" class="main" style="display: none;">
+            <div class="chat-container">
+                <div id="messages" class="messages"></div>
+                <div id="typingIndicator" class="typing-indicator px-3"></div>
+                <div class="message-input-container">
+                    <input type="text" id="messageInput" class="message-input" placeholder="Type your message..." disabled>
+                    <button id="sendButton" class="send-button" disabled>Send</button>
+                </div>
+            </div>
 
-    <h3>Adrenal Glands</h3>
-    <p>The adrenal glands are located on top of the kidneys. They produce hormones such as cortisol, aldosterone, and adrenaline. Cortisol helps regulate metabolism, immune responses, and stress response. Aldosterone helps control blood pressure and electrolyte balance. Adrenaline, also known as epinephrine, is involved in the body's "fight or flight" response, increasing heart rate, blood pressure, and energy availability during emergencies.</p>
+            <div class="side-panel">
+                <div class="user-info">
+                    <h2 class="font-bold mb-2">Your Info</h2>
+                    <p>Username: <span id="currentUsername">-</span></p>
+                    <p class="text-sm mt-2">Connection ID: <span id="connectionId" class="text-xs font-mono">-</span></p>
+                    <div class="mt-3">
+                        <button id="copyInviteLink" class="send-button w-full text-sm">Copy Invite Link</button>
+                    </div>
+                </div>
 
-    <h3>Pancreas</h3>
-    <p>The pancreas serves both as an exocrine gland (producing digestive enzymes) and an endocrine gland (producing hormones). The endocrine cells of the pancreas secrete insulin and glucagon, which regulate blood sugar levels. Insulin lowers blood sugar by facilitating its uptake into cells, while glucagon raises blood sugar by stimulating the release of stored glucose from the liver.</p>
+                <div class="user-list">
+                    <h2 class="font-bold mb-2">Users Online</h2>
+                    <div id="userList">
+                        <div class="loading">Connecting to network...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    <h3>Gonads (Ovaries and Testes)</h3>
-    <p>The ovaries, found in females, and the testes, found in males, are responsible for producing sex hormones. In females, the ovaries produce estrogen and progesterone, which regulate the menstrual cycle, pregnancy, and secondary sexual characteristics. In males, the testes produce testosterone, which is involved in sperm production, sexual development, and the development of male characteristics.</p>
+    <script>
+        // Chat Room Application using WebRTC for peer-to-peer communication
+        document.addEventListener('DOMContentLoaded', () => {
+            // DOM Elements
+            const setupDiv = document.getElementById('setup');
+            const chatInterface = document.getElementById('chatInterface');
+            const usernameInput = document.getElementById('username');
+            const joinChatButton = document.getElementById('joinChat');
+            const messagesContainer = document.getElementById('messages');
+            const messageInput = document.getElementById('messageInput');
+            const sendButton = document.getElementById('sendButton');
+            const userListContainer = document.getElementById('userList');
+            const currentUsernameSpan = document.getElementById('currentUsername');
+            const connectionIdSpan = document.getElementById('connectionId');
+            const copyInviteLinkButton = document.getElementById('copyInviteLink');
+            const errorContainer = document.getElementById('errorContainer');
+            const typingIndicator = document.getElementById('typingIndicator');
 
-    <h2>Interactions and Coordination</h2>
-    <p>The glands within the gland system work together in a complex feedback system called the hypothalamic-pituitary-endocrine axis. This axis involves the hypothalamus, a region in the brain, releasing hormones that stimulate or inhibit the pituitary gland's hormone production. In turn, the pituitary gland releases hormones that regulate the activities of other endocrine glands throughout the body.</p>
+            // Application state
+            let peer;
+            let connections = {};
+            let username = '';
+            let peerId = '';
+            let isTyping = false;
+            let typingTimeout;
+            let connectedUsers = new Map();
+            
+            // Initialize the chat application
+            const initChat = () => {
+                username = usernameInput.value.trim();
+                
+                if (!username) {
+                    showError('Please enter a username');
+                    return;
+                }
+                
+                setupDiv.style.display = 'none';
+                chatInterface.style.display = 'flex';
+                currentUsernameSpan.textContent = username;
+                
+                // Initialize PeerJS
+                try {
+                    peer = new Peer(null, {
+                        debug: 2
+                    });
+                    
+                    // Handle when peer is created
+                    peer.on('open', id => {
+                        peerId = id;
+                        connectionIdSpan.textContent = id;
+                        messageInput.disabled = false;
+                        sendButton.disabled = false;
+                        
+                        addSystemMessage(`You've joined the chat as ${username}`);
+                        console.log('My peer ID is: ' + id);
+                    });
+                    
+                    // Handle incoming connections
+                    peer.on('connection', conn => {
+                        handleNewConnection(conn);
+                    });
+                    
+                    // Handle errors
+                    peer.on('error', err => {
+                        console.error('PeerJS error:', err);
+                        showError(`Connection error: ${err.type}`);
+                    });
+                    
+                } catch (err) {
+                    console.error('Failed to initialize PeerJS:', err);
+                    showError('Failed to initialize chat: ' + err.message);
+                }
+            };
+            
+            // Handle a new connection
+            const handleNewConnection = (conn) => {
+                // Store connection
+                connections[conn.peer] = conn;
+                
+                // Set up connection event handlers
+                setupConnectionHandlers(conn);
+                
+                // Send our user information
+                conn.on('open', () => {
+                    conn.send({
+                        type: 'user-info',
+                        username: username,
+                        id: peerId
+                    });
+                });
+            };
+            
+            // Set up event handlers for a connection
+            const setupConnectionHandlers = (conn) => {
+                conn.on('data', data => {
+                    handleIncomingData(data, conn.peer);
+                });
+                
+                conn.on('close', () => {
+                    delete connections[conn.peer];
+                    removeUser(conn.peer);
+                    addSystemMessage(`${connectedUsers.get(conn.peer)?.username || 'A user'} has disconnected`);
+                });
+                
+                conn.on('error', err => {
+                    console.error('Connection error:', err);
+                    showError(`Error with connection to ${connectedUsers.get(conn.peer)?.username || 'a user'}: ${err.message}`);
+                });
+            };
+            
+            // Handle different types of incoming data
+            const handleIncomingData = (data, senderId) => {
+                if (data.type === 'message') {
+                    addMessage(data.username, data.content, false);
+                } 
+                else if (data.type === 'user-info') {
+                    addUser(senderId, data.username);
+                    addSystemMessage(`${data.username} has joined the chat`);
+                }
+                else if (data.type === 'typing') {
+                    updateTypingIndicator(data.username, data.isTyping);
+                }
+            };
+            
+            // Connect to a peer
+            const connectToPeer = (peerId) => {
+                if (connections[peerId]) {
+                    console.log('Already connected to', peerId);
+                    return;
+                }
+                
+                try {
+                    const conn = peer.connect(peerId);
+                    connections[peerId] = conn;
+                    
+                    setupConnectionHandlers(conn);
+                } catch (err) {
+                    console.error('Failed to connect to peer:', err);
+                    showError(`Failed to connect: ${err.message}`);
+                }
+            };
+            
+            // Send a message to all connected peers
+            const sendMessage = () => {
+                const message = messageInput.value.trim();
+                
+                if (!message) return;
+                
+                const messageData = {
+                    type: 'message',
+                    username: username,
+                    content: message,
+                    timestamp: Date.now()
+                };
+                
+                // Add message to our own chat
+                addMessage(username, message, true);
+                
+                // Send to all connections
+                Object.values(connections).forEach(conn => {
+                    if (conn.open) {
+                        conn.send(messageData);
+                    }
+                });
+                
+                // Clear the input
+                messageInput.value = '';
+                
+                // Send typing indicator that we stopped typing
+                sendTypingStatus(false);
+            };
+            
+            // Add a message to the chat display
+            const addMessage = (sender, content, isOutgoing) => {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${isOutgoing ? 'outgoing' : 'incoming'}`;
+                
+                if (!isOutgoing) {
+                    const senderSpan = document.createElement('div');
+                    senderSpan.className = 'text-xs font-bold mb-1';
+                    senderSpan.textContent = sender;
+                    messageDiv.appendChild(senderSpan);
+                }
+                
+                const contentSpan = document.createElement('div');
+                contentSpan.textContent = content;
+                messageDiv.appendChild(contentSpan);
+                
+                messagesContainer.appendChild(messageDiv);
+                scrollToBottom();
+            };
+            
+            // Add a system message
+            const addSystemMessage = (message) => {
+                const systemDiv = document.createElement('div');
+                systemDiv.className = 'system-message';
+                systemDiv.textContent = message;
+                messagesContainer.appendChild(systemDiv);
+                scrollToBottom();
+            };
+            
+            // Add a user to the user list
+            const addUser = (id, username) => {
+                connectedUsers.set(id, { username, id });
+                updateUserList();
+            };
+            
+            // Remove a user from the user list
+            const removeUser = (id) => {
+                connectedUsers.delete(id);
+                updateUserList();
+            };
+            
+            // Update the user list display
+            const updateUserList = () => {
+                userListContainer.innerHTML = '';
+                
+                if (connectedUsers.size === 0) {
+                    const noUsersDiv = document.createElement('div');
+                    noUsersDiv.className = 'text-sm italic text-gray-500';
+                    noUsersDiv.textContent = 'No other users online';
+                    userListContainer.appendChild(noUsersDiv);
+                    return;
+                }
+                
+                connectedUsers.forEach(user => {
+                    const userDiv = document.createElement('div');
+                    userDiv.className = 'user-item';
+                    
+                    const statusSpan = document.createElement('span');
+                    statusSpan.className = 'user-status status-online';
+                    userDiv.appendChild(statusSpan);
+                    
+                    const nameSpan = document.createElement('span');
+                    nameSpan.className = 'user-name';
+                    nameSpan.textContent = user.username;
+                    userDiv.appendChild(nameSpan);
+                    
+                    userListContainer.appendChild(userDiv);
+                });
+            };
+            
+            // Send typing status to all connections
+            const sendTypingStatus = (isTyping) => {
+                const typingData = {
+                    type: 'typing',
+                    username: username,
+                    isTyping: isTyping
+                };
+                
+                Object.values(connections).forEach(conn => {
+                    if (conn.open) {
+                        conn.send(typingData);
+                    }
+                });
+            };
+            
+            // Update typing indicator
+            const updateTypingIndicator = (user, isTyping) => {
+                // Current users who are typing
+                const typingUsers = Array.from(connectedUsers.values())
+                    .filter(u => u.isTyping)
+                    .map(u => u.username);
+                
+                // Update status for the user
+                connectedUsers.forEach((value, key) => {
+                    if (value.username === user) {
+                        value.isTyping = isTyping;
+                    }
+                });
+                
+                if (typingUsers.length === 0) {
+                    typingIndicator.textContent = '';
+                } else if (typingUsers.length === 1) {
+                    typingIndicator.textContent = `${typingUsers[0]} is typing...`;
+                } else if (typingUsers.length === 2) {
+                    typingIndicator.textContent = `${typingUsers[0]} and ${typingUsers[1]} are typing...`;
+                } else {
+                    typingIndicator.textContent = 'Several people are typing...';
+                }
+            };
+            
+            // Show an error message
+            const showError = (message) => {
+                errorContainer.textContent = message;
+                errorContainer.style.display = 'block';
+                setTimeout(() => {
+                    errorContainer.style.display = 'none';
+                }, 5000);
+            };
+            
+            // Scroll messages container to bottom
+            const scrollToBottom = () => {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            };
 
-    <p>By maintaining a delicate balance of hormone production and secretion, the gland system controls and influences numerous bodily functions, including:</p>
-    <ul>
-      <li>Growth and development</li>
-      <li>Metabolism and energy regulation</li>
-      <li>Reproduction and sexual development</li>
-      <li>Stress responses and adaptation</li>
-      <li>Blood pressure and electrolyte balance</li>
-      <li>Body temperature regulation</li>
-      <li>Immune system function</li>
-    </ul>
+            // Copy the invite link to clipboard
+            const copyInviteLink = () => {
+                if (!peerId) {
+                    showError('Your connection isn\'t ready yet');
+                    return;
+                }
+                
+                const inviteInfo = `Join my local chat! My connection ID is: ${peerId}`;
+                
+                try {
+                    // Use Clipboard API
+                    navigator.clipboard.writeText(inviteInfo).then(() => {
+                        const originalText = copyInviteLinkButton.textContent;
+                        copyInviteLinkButton.textContent = 'Copied!';
+                        setTimeout(() => {
+                            copyInviteLinkButton.textContent = originalText;
+                        }, 2000);
+                    }).catch(err => {
+                        console.error('Failed to copy:', err);
+                        showError('Failed to copy invite link');
+                    });
+                } catch (err) {
+                    console.error('Clipboard API not available:', err);
+                    // Fallback for browsers that don't support clipboard API
+                    const textarea = document.createElement('textarea');
+                    textarea.value = inviteInfo;
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    try {
+                        document.execCommand('copy');
+                        copyInviteLinkButton.textContent = 'Copied!';
+                        setTimeout(() => {
+                            copyInviteLinkButton.textContent = 'Copy Invite Link';
+                        }, 2000);
+                    } catch (err) {
+                        console.error('execCommand fallback failed:', err);
+                        showError('Failed to copy invite link');
+                    }
+                    document.body.removeChild(textarea);
+                }
+            };
+            
+            // Parse URL for connection ID
+            const parseUrlForConnectionId = () => {
+                try {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const connectTo = urlParams.get('connect');
+                    if (connectTo) {
+                        return connectTo;
+                    }
+                } catch (err) {
+                    console.error('Failed to parse URL parameters:', err);
+                }
+                return null;
+            };
 
-    <p>The gland system's intricate network ensures the proper functioning and coordination of these physiological processes.</p>
-  </section>
+            // Event Listeners
+            joinChatButton.addEventListener('click', () => {
+                initChat();
+                
+                // Check if we should connect to someone
+                const connectTo = parseUrlForConnectionId();
+                if (connectTo) {
+                    setTimeout(() => {
+                        connectToPeer(connectTo);
+                        addSystemMessage(`Connecting to peer: ${connectTo}`);
+                    }, 1000); // Give peer some time to initialize
+                }
+            });
+            
+            usernameInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    joinChatButton.click();
+                }
+            });
+            
+            sendButton.addEventListener('click', sendMessage);
+            
+            messageInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                } else if (!isTyping) {
+                    isTyping = true;
+                    sendTypingStatus(true);
+                }
+                
+                // Reset typing timeout
+                clearTimeout(typingTimeout);
+                typingTimeout = setTimeout(() => {
+                    if (isTyping) {
+                        isTyping = false;
+                        sendTypingStatus(false);
+                    }
+                }, 3000);
+            });
+            
+            copyInviteLinkButton.addEventListener('click', copyInviteLink);
 
-  <footer class="footer">
-    <p>&copy; 2024 BBSZG6BIO</p>
-  </footer>
+            // Add connect to peer functionality with a connect form
+            const addConnectToPeerUI = () => {
+                const connectForm = document.createElement('div');
+                connectForm.innerHTML = `
+                    <div class="mt-3 flex flex-col sm:flex-row gap-2">
+                        <input type="text" id="peerIdInput" placeholder="Enter connection ID to connect" class="message-input flex-1 text-base">
+                        <button id="connectButton" class="send-button">Connect</button>
+                    </div>
+                `;
+                document.getElementById('setup').appendChild(connectForm);
+                
+                document.getElementById('connectButton').addEventListener('click', () => {
+                    const peerIdToConnect = document.getElementById('peerIdInput').value.trim();
+                    if (peerIdToConnect) {
+                        initChat();
+                        setTimeout(() => {
+                            connectToPeer(peerIdToConnect);
+                            addSystemMessage(`Connecting to peer: ${peerIdToConnect}`);
+                        }, 1000);
+                    } else {
+                        showError('Please enter a connection ID');
+                    }
+                });
+                
+                document.getElementById('peerIdInput').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        document.getElementById('connectButton').click();
+                    }
+                });
+            };
+            
+            // Add the connect to peer UI
+            addConnectToPeerUI();
+            
+            // Focus the username input
+            usernameInput.focus();
+        });
+    </script>
 </body>
 </html>
