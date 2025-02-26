@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Free-For-All Chat</title>
+    <title>Multi-Network Chat</title>
     <!-- Tailwind and Flowbite for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.0/flowbite.min.css" rel="stylesheet" />
@@ -64,6 +64,12 @@
                            placeholder="Enter your username" maxlength="20" required>
                     <p id="username-error" class="mt-2 text-sm text-red-600 dark:text-red-500 hidden">Please enter a valid username (3-20 characters).</p>
                 </div>
+                <div class="mb-4">
+                    <label for="room" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Room ID</label>
+                    <input type="text" id="room" class="bg-gray-50 border border-gray-300 text-gray-900 text-base rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" 
+                           placeholder="Enter a room ID to join or create" maxlength="20" required>
+                    <p id="room-error" class="mt-2 text-sm text-red-600 dark:text-red-500 hidden">Please enter a valid room ID (3-20 characters, alphanumeric only).</p>
+                </div>
                 <button id="join-btn" class="w-full text-white bg-[var(--primary-color)] hover:bg-[#4b4ab2] focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
                     Join Chat
                 </button>
@@ -75,7 +81,10 @@
         <div id="chat-screen" class="hidden">
             <div class="flex flex-col w-full">
                 <div class="flex items-center justify-between mb-4">
-                    <h1 class="text-xl font-semibold text-gray-800 dark:text-white">Free-For-All Chat</h1>
+                    <div class="flex items-center space-x-2">
+                        <h1 class="text-xl font-semibold text-gray-800 dark:text-white">Chat</h1>
+                        <span class="py-0.5 px-2 bg-[var(--primary-color)] text-white text-xs rounded-full" id="room-badge"></span>
+                    </div>
                     <div class="flex items-center">
                         <span class="text-sm text-gray-600 dark:text-gray-300 mr-2">Logged in as:</span>
                         <span id="current-user" class="font-semibold text-[var(--primary-color)]"></span>
@@ -115,7 +124,9 @@
                 </svg>
                 <span class="sr-only">Loading...</span>
             </div>
-            <p class="text-gray-700 dark:text-gray-300">Connecting to chat server...</p>
+            <p id="loading-text" class="text-gray-700 dark:text-gray-300">Connecting to chat server...</p>
+            <p id="connection-error" class="mt-3 text-red-500 dark:text-red-400 hidden">Connection failed. Please try again or check your connectivity.</p>
+            <button id="retry-btn" class="mt-4 bg-[var(--primary-color)] text-white py-2 px-4 rounded hidden">Retry Connection</button>
         </div>
     </div>
 
@@ -124,11 +135,17 @@
         const usernameScreen = document.getElementById('username-screen');
         const chatScreen = document.getElementById('chat-screen');
         const loadingScreen = document.getElementById('loading-screen');
+        const loadingText = document.getElementById('loading-text');
+        const connectionError = document.getElementById('connection-error');
+        const retryBtn = document.getElementById('retry-btn');
         const connectionStatus = document.getElementById('connection-status');
         const usernameInput = document.getElementById('username');
+        const roomInput = document.getElementById('room');
         const usernameError = document.getElementById('username-error');
+        const roomError = document.getElementById('room-error');
         const joinBtn = document.getElementById('join-btn');
         const currentUserSpan = document.getElementById('current-user');
+        const roomBadge = document.getElementById('room-badge');
         const changeUsernameBtn = document.getElementById('change-username');
         const messagesContainer = document.getElementById('messages-container');
         const messageInput = document.getElementById('message-input');
@@ -149,10 +166,21 @@
             connectedToHost: false,
             colors: {},
             nextColor: 0,
+            roomId: '',
+            reconnectAttempts: 0,
+            maxReconnectAttempts: 3,
             // Available colors for user indicators
             colorPalette: [
                 '#FF5733', '#33FF57', '#3357FF', '#F033FF', '#FF33A8', 
                 '#33FFF0', '#FFF033', '#FF8333', '#33FF83', '#8333FF'
+            ],
+            // Ice server configuration for PeerJS
+            iceServers: [
+                { url: 'stun:stun.l.google.com:19302' },
+                { url: 'stun:stun1.l.google.com:19302' },
+                { url: 'stun:stun2.l.google.com:19302' },
+                { url: 'stun:stun3.l.google.com:19302' },
+                { url: 'stun:stun4.l.google.com:19302' }
             ]
         };
         
@@ -161,41 +189,90 @@
             return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
         }
         
+        // Create a valid peer ID by combining room and role
+        function createPeerId(room, role, userId = null) {
+            // Make room name safe for use in IDs
+            const safeRoom = room.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+            if (role === 'host') {
+                return `${safeRoom}-host`;
+            } else {
+                return `${safeRoom}-${userId}`;
+            }
+        }
+        
         // Initialize PeerJS connection
         function initPeer() {
             // Show loading screen
             usernameScreen.classList.add('hidden');
             loadingScreen.classList.remove('hidden');
+            connectionError.classList.add('hidden');
+            retryBtn.classList.add('hidden');
             
             // Create a unique ID for this user
             chatState.userId = generateUserId();
             
             connectionStatus.textContent = 'Connecting to server...';
+            loadingText.textContent = `Connecting to room "${chatState.roomId}"...`;
             
-            // Initialize the PeerJS connection
-            chatState.peer = new Peer(chatState.userId);
+            // Get peer ID based on room and user ID
+            const peerId = createPeerId(chatState.roomId, 'user', chatState.userId);
+            
+            // Initialize the PeerJS connection with ICE servers for NAT traversal
+            chatState.peer = new Peer(peerId, {
+                config: {
+                    'iceServers': chatState.iceServers
+                },
+                debug: 2 // Set debug level (0-3)
+            });
             
             // Handle connection to PeerJS server
             chatState.peer.on('open', (id) => {
-                console.log('Connected to server with ID:', id);
+                console.log('Connected to PeerJS server with ID:', id);
                 connectionStatus.textContent = 'Connected! Joining chat...';
+                loadingText.textContent = `Connected! Joining room "${chatState.roomId}"...`;
+                chatState.reconnectAttempts = 0;
                 
-                // Try to connect to the "host" peer
+                // Try to connect to the "host" peer of this room
                 findHost();
             });
             
             // Handle connection errors
             chatState.peer.on('error', (err) => {
                 console.error('PeerJS error:', err);
+                
                 if (err.type === 'peer-unavailable') {
                     // If no host is found, become the host
                     if (!chatState.isHost && !chatState.connectedToHost) {
                         becomeHost();
                     }
+                } else if (err.type === 'network' || err.type === 'server-error') {
+                    // Handle network errors
+                    handleConnectionError();
                 } else {
+                    // Other errors
                     connectionStatus.textContent = 'Connection error. Please try again.';
-                    loadingScreen.classList.add('hidden');
-                    usernameScreen.classList.remove('hidden');
+                    loadingText.textContent = 'Connection error occurred.';
+                    connectionError.textContent = `Error: ${err.type}`;
+                    connectionError.classList.remove('hidden');
+                    retryBtn.classList.remove('hidden');
+                }
+            });
+            
+            // Handle disconnection from the server
+            chatState.peer.on('disconnected', () => {
+                console.log('Disconnected from PeerJS server, attempting to reconnect...');
+                
+                if (chatState.reconnectAttempts < chatState.maxReconnectAttempts) {
+                    chatState.reconnectAttempts++;
+                    loadingText.textContent = `Connection lost. Reconnecting... (Attempt ${chatState.reconnectAttempts}/${chatState.maxReconnectAttempts})`;
+                    
+                    // Try to reconnect
+                    setTimeout(() => {
+                        chatState.peer.reconnect();
+                    }, 1000);
+                } else {
+                    // Max reconnect attempts reached
+                    handleConnectionError();
                 }
             });
             
@@ -206,12 +283,22 @@
             });
         }
         
+        // Handle connection errors
+        function handleConnectionError() {
+            loadingText.textContent = 'Unable to connect to the chat server.';
+            connectionError.textContent = 'Connection failed. Please check your internet connection and try again.';
+            connectionError.classList.remove('hidden');
+            retryBtn.classList.remove('hidden');
+        }
+        
         // Try to find a host to connect to
         function findHost() {
             try {
-                // Try to connect to the "host" peer
-                // Just using "host" as a convention - in a real app, you'd use a signaling server
-                const hostConnection = chatState.peer.connect('host', {
+                // Try to connect to the host for this room
+                const hostId = createPeerId(chatState.roomId, 'host');
+                console.log('Trying to connect to host:', hostId);
+                
+                const hostConnection = chatState.peer.connect(hostId, {
                     reliable: true
                 });
                 
@@ -225,6 +312,7 @@
                         type: 'join',
                         username: chatState.username,
                         userId: chatState.userId,
+                        roomId: chatState.roomId,
                         timestamp: new Date().toISOString()
                     });
                     
@@ -236,8 +324,18 @@
                         console.log('Host connection closed');
                         chatState.connectedToHost = false;
                         
-                        // Try to become the host
-                        becomeHost();
+                        if (chatState.isLoggedIn) {
+                            // Add system message
+                            addMessage({
+                                sender: 'System',
+                                content: 'Connection to host lost. Attempting to reconnect or become host...',
+                                timestamp: new Date().toISOString(),
+                                isSystem: true
+                            });
+                            
+                            // Try to become the host
+                            becomeHost();
+                        }
                     });
                 });
                 
@@ -256,15 +354,22 @@
         function becomeHost() {
             if (chatState.isHost || chatState.connectedToHost) return;
             
-            console.log('Becoming host');
+            console.log('Becoming host for room:', chatState.roomId);
+            loadingText.textContent = `Creating room "${chatState.roomId}"...`;
             
             // Close the current peer connection
             if (chatState.peer) {
                 chatState.peer.destroy();
             }
             
-            // Create a new peer with the ID "host"
-            chatState.peer = new Peer('host');
+            // Create a new peer with the host ID for this room
+            const hostId = createPeerId(chatState.roomId, 'host');
+            chatState.peer = new Peer(hostId, {
+                config: {
+                    'iceServers': chatState.iceServers
+                },
+                debug: 2
+            });
             
             chatState.peer.on('open', (id) => {
                 console.log('Now hosting as:', id);
@@ -274,13 +379,17 @@
                 loadingScreen.classList.add('hidden');
                 chatScreen.classList.remove('hidden');
                 
+                // Update UI
+                updateCurrentUser();
+                roomBadge.textContent = chatState.roomId;
+                
                 // Add ourselves to the user list
                 addUser(chatState.userId, chatState.username);
                 
                 // Add a system message
                 addMessage({
                     sender: 'System',
-                    content: `You have created a new chat room as ${chatState.username}`,
+                    content: `You have created a new chat room "${chatState.roomId}" as ${chatState.username}`,
                     timestamp: new Date().toISOString(),
                     isSystem: true
                 });
@@ -301,6 +410,57 @@
                     // Try to connect to that host instead
                     chatState.isHost = false;
                     initPeer();
+                } else if (err.type === 'network' || err.type === 'server-error') {
+                    // Handle network errors
+                    if (chatState.isLoggedIn) {
+                        // We were already logged in, so add a system message
+                        addMessage({
+                            sender: 'System',
+                            content: 'Connection to server lost. Messages may not be sent until reconnected.',
+                            timestamp: new Date().toISOString(),
+                            isSystem: true
+                        });
+                    } else {
+                        // We weren't logged in yet, so show the error
+                        handleConnectionError();
+                    }
+                }
+            });
+            
+            // Handle disconnection from the server
+            chatState.peer.on('disconnected', () => {
+                console.log('Host disconnected from PeerJS server, attempting to reconnect...');
+                
+                if (chatState.isLoggedIn) {
+                    // We were already logged in, so add a system message
+                    addMessage({
+                        sender: 'System',
+                        content: 'Connection to server lost. Attempting to reconnect...',
+                        timestamp: new Date().toISOString(),
+                        isSystem: true
+                    });
+                    
+                    // Try to reconnect
+                    if (chatState.reconnectAttempts < chatState.maxReconnectAttempts) {
+                        chatState.reconnectAttempts++;
+                        
+                        setTimeout(() => {
+                            chatState.peer.reconnect();
+                        }, 1000);
+                        
+                        // Add another system message when reconnected
+                        chatState.peer.once('open', () => {
+                            addMessage({
+                                sender: 'System',
+                                content: 'Reconnected to server successfully.',
+                                timestamp: new Date().toISOString(),
+                                isSystem: true
+                            });
+                        });
+                    }
+                } else {
+                    // We weren't logged in yet, so show the error
+                    handleConnectionError();
                 }
             });
         }
@@ -323,6 +483,7 @@
                         users: chatState.users,
                         messages: chatState.messages,
                         colors: chatState.colors,
+                        roomId: chatState.roomId,
                         timestamp: new Date().toISOString()
                     });
                 }
@@ -342,7 +503,14 @@
                 
                 // If we're the host, inform others about the disconnection
                 if (chatState.isHost) {
-                    const userId = conn.peer;
+                    // Extract userId from the peer connection
+                    // For multi-room, we need to extract just the user part
+                    const peerId = conn.peer;
+                    // The peer ID is in format: roomid-userId
+                    const parts = peerId.split('-');
+                    // The userId is everything after the first dash
+                    const userId = parts.slice(1).join('-');
+                    
                     const username = chatState.users[userId];
                     
                     if (username) {
@@ -354,6 +522,7 @@
                             type: 'leave',
                             userId: userId,
                             username: username,
+                            roomId: chatState.roomId,
                             timestamp: new Date().toISOString()
                         };
                         
@@ -367,6 +536,14 @@
                         updateOnlineUsers();
                     }
                 }
+            });
+            
+            // Handle connection errors
+            conn.on('error', (err) => {
+                console.error('Connection error with peer:', conn.peer, err);
+                
+                // Remove this connection from our list
+                chatState.connections = chatState.connections.filter(c => c !== conn);
             });
         }
         
@@ -432,6 +609,11 @@
                         // Set the users and messages
                         chatState.users = data.users;
                         chatState.colors = data.colors;
+                        chatState.roomId = data.roomId;
+                        
+                        // Update room badge and user display
+                        roomBadge.textContent = chatState.roomId;
+                        updateCurrentUser();
                         
                         // Add all messages
                         data.messages.forEach(msg => {
@@ -450,6 +632,7 @@
                             type: 'join',
                             username: chatState.username,
                             userId: chatState.userId,
+                            roomId: chatState.roomId,
                             timestamp: new Date().toISOString()
                         });
                     }
@@ -516,7 +699,11 @@
             
             chatState.connections.forEach(conn => {
                 if (conn !== exceptConn && conn.open) {
-                    conn.send(data);
+                    try {
+                        conn.send(data);
+                    } catch (err) {
+                        console.error('Error sending data to peer:', conn.peer, err);
+                    }
                 }
             });
         }
@@ -560,18 +747,40 @@
             return username && username.trim().length >= 3 && username.trim().length <= 20;
         }
         
+        // Validate room ID
+        function validateRoom(room) {
+            const trimmed = room.trim();
+            // Check length
+            if (trimmed.length < 3 || trimmed.length > 20) return false;
+            // Check if it contains only alphanumeric, spaces, and common punctuation
+            return /^[a-zA-Z0-9 \-_.']+$/.test(trimmed);
+        }
+        
         // Join the chat
         function joinChat() {
             const username = usernameInput.value.trim();
+            const room = roomInput.value.trim();
+            let hasError = false;
             
             if (!validateUsername(username)) {
                 usernameError.classList.remove('hidden');
-                return;
+                hasError = true;
+            } else {
+                usernameError.classList.add('hidden');
             }
             
-            // Valid username
-            usernameError.classList.add('hidden');
+            if (!validateRoom(room)) {
+                roomError.classList.remove('hidden');
+                hasError = true;
+            } else {
+                roomError.classList.add('hidden');
+            }
+            
+            if (hasError) return;
+            
+            // Valid inputs
             chatState.username = username;
+            chatState.roomId = room;
             
             // Initialize PeerJS
             initPeer();
@@ -588,6 +797,7 @@
                 userId: chatState.userId,
                 username: chatState.username,
                 content: content,
+                roomId: chatState.roomId,
                 timestamp: new Date().toISOString()
             };
             
@@ -604,7 +814,30 @@
             if (chatState.isHost) {
                 broadcastToPeers(message);
             } else if (chatState.hostConnection && chatState.hostConnection.open) {
-                chatState.hostConnection.send(message);
+                try {
+                    chatState.hostConnection.send(message);
+                } catch (err) {
+                    console.error('Error sending message to host:', err);
+                    addMessage({
+                        sender: 'System',
+                        content: 'Failed to send message. Connection may be lost.',
+                        timestamp: new Date().toISOString(),
+                        isSystem: true
+                    });
+                }
+            } else {
+                // Connection to host is lost
+                addMessage({
+                    sender: 'System',
+                    content: 'Message could not be sent: No connection to host.',
+                    timestamp: new Date().toISOString(),
+                    isSystem: true
+                });
+                
+                // Try to reconnect or become host
+                if (!chatState.isHost && !chatState.connectedToHost) {
+                    becomeHost();
+                }
             }
             
             // Clear input
@@ -661,13 +894,14 @@
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
         
-        // Change username
+        // Change username/room (go back to login screen)
         function changeUsername() {
             // Add a leaving message
             const leaveMessage = {
                 type: 'leave',
                 userId: chatState.userId,
                 username: chatState.username,
+                roomId: chatState.roomId,
                 timestamp: new Date().toISOString()
             };
             
@@ -679,7 +913,12 @@
                 delete chatState.users[chatState.userId];
                 updateOnlineUsers();
             } else if (chatState.hostConnection && chatState.hostConnection.open) {
-                chatState.hostConnection.send(leaveMessage);
+                try {
+                    chatState.hostConnection.send(leaveMessage);
+                } catch (e) {
+                    // Ignore errors during disconnection
+                    console.log('Error sending leave message:', e);
+                }
             }
             
             // Close connections
@@ -707,9 +946,11 @@
             chatState.users = {};
             chatState.colors = {};
             chatState.nextColor = 0;
+            chatState.reconnectAttempts = 0;
             
             // Update UI
-            usernameInput.value = '';
+            usernameInput.value = chatState.username;
+            roomInput.value = chatState.roomId;
             messagesContainer.innerHTML = '<div class="flex justify-center p-4"><p class="text-gray-500 dark:text-gray-400 text-sm">Welcome to the chat! Messages appear here.</p></div>';
             onlineUsers.innerHTML = '';
             
@@ -718,10 +959,35 @@
             connectionStatus.textContent = '';
         }
         
+        // Retry connection
+        function retryConnection() {
+            // Reset connection attempts counter
+            chatState.reconnectAttempts = 0;
+            
+            // Hide error and retry button
+            connectionError.classList.add('hidden');
+            retryBtn.classList.add('hidden');
+            
+            // Try connecting again
+            initPeer();
+        }
+        
         // Event listeners
         joinBtn.addEventListener('click', joinChat);
         
         usernameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                // If room is already filled, join chat
+                if (validateRoom(roomInput.value)) {
+                    joinChat();
+                } else {
+                    // Otherwise, focus the room field
+                    roomInput.focus();
+                }
+            }
+        });
+        
+        roomInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') joinChat();
         });
         
@@ -732,6 +998,8 @@
         });
         
         changeUsernameBtn.addEventListener('click', changeUsername);
+        
+        retryBtn.addEventListener('click', retryConnection);
         
         // Update current user display
         function updateCurrentUser() {
@@ -749,6 +1017,7 @@
                     type: 'leave',
                     userId: chatState.userId,
                     username: chatState.username,
+                    roomId: chatState.roomId,
                     timestamp: new Date().toISOString()
                 };
                 
