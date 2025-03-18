@@ -1,157 +1,1042 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>JavaScript: Break and Continue Statements</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: Arial, sans-serif;
-      background-color: #f4f4f4;
-    }
-    .slide {
-      display: none;
-      height: 100vh;
-      width: 100vw;
-      padding: 2em;
-      box-sizing: border-box;
-    }
-    .active {
-      display: block;
-    }
-    h1, h2, h3 {
-      margin-top: 0;
-    }
-    pre {
-      background-color: #272822;
-      color: #f8f8f2;
-      padding: 10px;
-      overflow-x: auto;
-    }
-    code {
-      background-color: #eee;
-      padding: 2px 4px;
-      border-radius: 4px;
-    }
-    .navigation {
-      position: fixed;
-      bottom: 20px;
-      width: 100%;
-      text-align: center;
-    }
-    .nav-button {
-      cursor: pointer;
-      background-color: #007bff;
-      border: none;
-      color: white;
-      padding: 10px 20px;
-      margin: 5px;
-      font-size: 16px;
-      border-radius: 4px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Switch Statement Tutorial</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-light.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/javascript.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #5D5CDE;
+            --text-color: #333333;
+            --bg-color: #FFFFFF;
+            --card-bg: #F8F9FA;
+            --border-color: #E2E8F0;
+        }
+        
+        .dark {
+            --primary-color: #7978DE;
+            --text-color: #E2E8F0;
+            --bg-color: #181818;
+            --card-bg: #262626;
+            --border-color: #4A5568;
+        }
+        
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            transition: all 0.3s ease;
+        }
+        
+        .slide {
+            display: none;
+            height: 100%;
+            padding: 2rem;
+            background-color: var(--bg-color);
+        }
+        
+        .slide.active {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .slide-content {
+            flex: 1;
+            overflow-y: auto;
+        }
+        
+        .btn {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+        }
+        
+        .btn:hover {
+            opacity: 0.9;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .progress-bar {
+            height: 0.25rem;
+            background-color: #CBD5E0;
+            border-radius: 9999px;
+            overflow: hidden;
+        }
+        
+        .progress-bar-fill {
+            height: 100%;
+            background-color: var(--primary-color);
+            transition: width 0.3s ease;
+        }
+        
+        pre {
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+            background-color: var(--card-bg) !important;
+        }
+        
+        code {
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .quiz-option {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .quiz-option:hover {
+            border-color: var(--primary-color);
+        }
+        
+        .quiz-option.selected {
+            border-color: var(--primary-color);
+            background-color: rgba(93, 92, 222, 0.1);
+        }
+        
+        .quiz-option.correct {
+            border-color: #68D391;
+            background-color: rgba(104, 211, 145, 0.1);
+        }
+        
+        .quiz-option.incorrect {
+            border-color: #F56565;
+            background-color: rgba(245, 101, 101, 0.1);
+        }
+        
+        .step-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #CBD5E0;
+            margin: 0 3px;
+            transition: all 0.3s ease;
+        }
+        
+        .step-indicator.active {
+            background-color: var(--primary-color);
+            transform: scale(1.2);
+        }
+
+        /* Dark mode for highlight.js */
+        .dark .hljs {
+            background: #2D3748;
+            color: #E2E8F0;
+        }
+        
+        .dark .hljs-keyword,
+        .dark .hljs-selector-tag,
+        .dark .hljs-title,
+        .dark .hljs-section,
+        .dark .hljs-doctag,
+        .dark .hljs-name,
+        .dark .hljs-strong {
+            color: #F687B3;
+        }
+        
+        .dark .hljs-string,
+        .dark .hljs-attr,
+        .dark .hljs-code,
+        .dark .hljs-addition {
+            color: #68D391;
+        }
+        
+        .dark .hljs-number,
+        .dark .hljs-literal,
+        .dark .hljs-variable,
+        .dark .hljs-template-variable,
+        .dark .hljs-tag .hljs-attr {
+            color: #F6E05E;
+        }
+        
+        .dark .hljs-comment,
+        .dark .hljs-quote,
+        .dark .hljs-deletion {
+            color: #718096;
+        }
+        
+        h2, h3 {
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+    </style>
 </head>
-<body>
-  <!-- Slide 1: Title -->
-  <section class="slide active" id="slide1">
-    <h1>JavaScript: Break and Continue Statements</h1>
-    <p>An overview of controlling loop execution in JavaScript.</p>
-  </section>
+<body class="min-h-screen flex flex-col">
+    <div class="container mx-auto px-4 flex flex-col h-screen max-w-4xl">
+        <!-- Progress indicator -->
+        <div class="py-4">
+            <div class="progress-bar">
+                <div class="progress-bar-fill" id="progressBar"></div>
+            </div>
+            <div class="flex justify-center mt-2" id="stepIndicators">
+                <!-- Step indicators will be added dynamically -->
+            </div>
+        </div>
+        
+        <!-- Slide 1: Introduction -->
+        <div class="slide active" data-slide="1">
+            <div class="slide-content flex flex-col items-center justify-center text-center">
+                <h1 class="text-4xl font-bold mb-4">Understanding Switch Statements</h1>
+                <p class="text-xl mb-8">A comprehensive guide to using switch statements in JavaScript</p>
+                <div class="w-32 h-32 flex items-center justify-center mb-8">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-full h-full">
+                        <path fill="var(--primary-color)" d="M17,4V10L15,8L13,10V4H9V20H21V4H17M3,7H7V9H3V7M3,11H7V13H3V11M3,15H7V17H3V15Z" />
+                    </svg>
+                </div>
+                <p class="mb-4">Navigate through the slides to learn about:</p>
+                <ul class="text-left mb-8">
+                    <li class="mb-2">✓ What switch statements are and when to use them</li>
+                    <li class="mb-2">✓ Syntax and structure of switch statements</li>
+                    <li class="mb-2">✓ Practical examples and common patterns</li>
+                    <li class="mb-2">✓ Test your knowledge with a quiz</li>
+                </ul>
+            </div>
+            <div class="flex justify-between">
+                <button class="btn prev-btn opacity-50 cursor-not-allowed" disabled>Previous</button>
+                <button class="btn next-btn">Next</button>
+            </div>
+        </div>
+        
+        <!-- Slide 2: What is a Switch Statement -->
+        <div class="slide" data-slide="2">
+            <div class="slide-content">
+                <h2 class="text-3xl font-bold mb-6">What is a Switch Statement?</h2>
+                <div class="card">
+                    <p class="mb-4">A <strong>switch statement</strong> is a control flow statement that evaluates an expression, matching the expression's value against a series of <strong>case</strong> clauses, and executes statements after the first case clause with a matching value.</p>
+                    <p>It provides an efficient way to select one of many code blocks to be executed.</p>
+                </div>
+                
+                <h3 class="text-2xl font-bold mt-8 mb-4">When to Use Switch Statements</h3>
+                <div class="card">
+                    <p>Use switch statements when you have:</p>
+                    <ul class="list-disc pl-6 mt-2">
+                        <li class="mb-2">A single expression to evaluate against multiple possible values</li>
+                        <li class="mb-2">Many potential conditions that would otherwise require multiple if-else statements</li>
+                        <li class="mb-2">A need for cleaner, more readable code compared to many if-else statements</li>
+                        <li class="mb-2">Values to compare are of the same type and have defined, discrete values</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="flex justify-between mt-4">
+                <button class="btn prev-btn">Previous</button>
+                <button class="btn next-btn">Next</button>
+            </div>
+        </div>
+        
+        <!-- Slide 3: Switch vs If-Else -->
+        <div class="slide" data-slide="3">
+            <div class="slide-content">
+                <h2 class="text-3xl font-bold mb-6">Switch vs. If-Else</h2>
+                
+                <div class="flex flex-col md:flex-row gap-4 mb-6">
+                    <div class="card flex-1">
+                        <h3 class="text-xl font-semibold mb-3">If-Else Structure</h3>
+                        <pre><code class="language-javascript">
+if (fruit === 'apple') {
+    console.log('Apples are $0.99 per pound');
+} else if (fruit === 'banana') {
+    console.log('Bananas are $0.59 per pound');
+} else if (fruit === 'orange') {
+    console.log('Oranges are $0.79 per pound');
+} else {
+    console.log('Sorry, we are out of ' + fruit);
+}</code></pre>
+                    </div>
+                    <div class="card flex-1">
+                        <h3 class="text-xl font-semibold mb-3">Switch Structure</h3>
+                        <pre><code class="language-javascript">
+switch (fruit) {
+    case 'apple':
+        console.log('Apples are $0.99 per pound');
+        break;
+    case 'banana':
+        console.log('Bananas are $0.59 per pound');
+        break;
+    case 'orange':
+        console.log('Oranges are $0.79 per pound');
+        break;
+    default:
+        console.log('Sorry, we are out of ' + fruit);
+}</code></pre>
+                    </div>
+                </div>
+                
+                <h3 class="text-2xl font-bold mt-6 mb-4">Key Differences</h3>
+                <div class="card">
+                    <ul class="list-disc pl-6">
+                        <li class="mb-2"><strong>Readability:</strong> Switch statements can be more readable when comparing a single variable against multiple values</li>
+                        <li class="mb-2"><strong>Evaluation:</strong> If-else can evaluate any boolean expression; switch compares a single expression against case values</li>
+                        <li class="mb-2"><strong>Fallthrough:</strong> Switch cases fall through (continue to the next case) if there's no break statement</li>
+                        <li class="mb-2"><strong>Default:</strong> Switch has a built-in default case for handling when no matches occur</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="flex justify-between mt-4">
+                <button class="btn prev-btn">Previous</button>
+                <button class="btn next-btn">Next</button>
+            </div>
+        </div>
+        
+        <!-- Slide 4: Syntax and Structure -->
+        <div class="slide" data-slide="4">
+            <div class="slide-content">
+                <h2 class="text-3xl font-bold mb-6">Syntax and Structure</h2>
+                
+                <div class="card mb-6">
+                    <pre><code class="language-javascript">
+switch (expression) {
+    case value1:
+        // Code to execute when expression === value1
+        break;
+    case value2:
+        // Code to execute when expression === value2
+        break;
+    case value3:
+    case value4: // Multiple cases can share the same code block
+        // Code to execute when expression === value3 OR value4
+        break;
+    default:
+        // Code to execute if none of the cases match
+}</code></pre>
+                </div>
+                
+                <h3 class="text-2xl font-bold mb-4">Key Components</h3>
+                
+                <div class="card mb-3">
+                    <p class="font-semibold">1. <span class="text-purple-600 dark:text-purple-400">switch (expression)</span></p>
+                    <p>The expression to evaluate. Can be a variable, function call, or any expression that returns a value.</p>
+                </div>
+                
+                <div class="card mb-3">
+                    <p class="font-semibold">2. <span class="text-green-600 dark:text-green-400">case value:</span></p>
+                    <p>Each case label specifies a value to compare with the expression. If they match, the code after the case label executes.</p>
+                </div>
+                
+                <div class="card mb-3">
+                    <p class="font-semibold">3. <span class="text-red-600 dark:text-red-400">break;</span></p>
+                    <p>Exits the switch statement. Without break, execution "falls through" to the next case.</p>
+                </div>
+                
+                <div class="card">
+                    <p class="font-semibold">4. <span class="text-yellow-600 dark:text-yellow-400">default:</span></p>
+                    <p>Optional block that executes if none of the case values match the expression.</p>
+                </div>
+            </div>
+            <div class="flex justify-between mt-4">
+                <button class="btn prev-btn">Previous</button>
+                <button class="btn next-btn">Next</button>
+            </div>
+        </div>
+        
+        <!-- Slide 5: Example 1 - Basic Switch -->
+        <div class="slide" data-slide="5">
+            <div class="slide-content">
+                <h2 class="text-3xl font-bold mb-6">Example 1: Basic Switch Statement</h2>
+                
+                <div class="card mb-6">
+                    <h3 class="text-xl font-semibold mb-3">Day of the Week</h3>
+                    <pre><code class="language-javascript">
+const day = 3; // Let's assume 1 = Monday, 2 = Tuesday, etc.
+let dayName;
 
-  <!-- Slide 2: Introduction -->
-  <section class="slide" id="slide2">
-    <h2>Introduction</h2>
-    <ul>
-      <li>Control the flow of loops (for, while, do...while).</li>
-      <li>Useful for handling complex logic within loops.</li>
-    </ul>
-  </section>
-
-  <!-- Slide 3: Break Statement -->
-  <section class="slide" id="slide3">
-    <h2>The <code>break</code> Statement</h2>
-    <ul>
-      <li>Terminates the entire loop immediately.</li>
-      <li>Transfers control to the statement after the loop.</li>
-      <li>Often used when a specific condition is met.</li>
-    </ul>
-    <h3>Example:</h3>
-    <pre>
-for (let i = 1; i <= 10; i++) {
-  if (i > 5) {
-    break; // Exit the loop when i > 5
-  }
-  console.log(i); // Outputs: 1, 2, 3, 4, 5
+switch (day) {
+    case 1:
+        dayName = 'Monday';
+        break;
+    case 2:
+        dayName = 'Tuesday';
+        break;
+    case 3:
+        dayName = 'Wednesday';
+        break;
+    case 4:
+        dayName = 'Thursday';
+        break;
+    case 5:
+        dayName = 'Friday';
+        break;
+    case 6:
+        dayName = 'Saturday';
+        break;
+    case 7:
+        dayName = 'Sunday';
+        break;
+    default:
+        dayName = 'Invalid day';
 }
-console.log("Loop terminated.");
-    </pre>
-  </section>
 
-  <!-- Slide 4: Continue Statement -->
-  <section class="slide" id="slide4">
-    <h2>The <code>continue</code> Statement</h2>
-    <ul>
-      <li>Skips the remainder of the current loop iteration.</li>
-      <li>Immediately jumps to the next iteration.</li>
-      <li>Useful for bypassing code when specific conditions are met.</li>
-    </ul>
-    <h3>Example:</h3>
-    <pre>
-for (let i = 1; i <= 10; i++) {
-  if (i % 2 === 0) {
-    continue; // Skip even numbers
-  }
-  console.log(i); // Outputs: 1, 3, 5, 7, 9 (odd numbers)
+console.log(dayName); // Outputs: "Wednesday"</code></pre>
+                </div>
+                
+                <div class="card">
+                    <h3 class="text-xl font-semibold mb-3">Key Points</h3>
+                    <ul class="list-disc pl-6">
+                        <li class="mb-2">The expression <code>day</code> is compared against each case value</li>
+                        <li class="mb-2">When a match is found (case 3), the code after that case executes</li>
+                        <li class="mb-2">The <code>break</code> statement prevents fall-through to other cases</li>
+                        <li class="mb-2">If <code>day</code> didn't match any case, the <code>default</code> case would execute</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="flex justify-between mt-4">
+                <button class="btn prev-btn">Previous</button>
+                <button class="btn next-btn">Next</button>
+            </div>
+        </div>
+        
+        <!-- Slide 6: Example 2 - Switch with Strings -->
+        <div class="slide" data-slide="6">
+            <div class="slide-content">
+                <h2 class="text-3xl font-bold mb-6">Example 2: Switch with Strings</h2>
+                
+                <div class="card mb-6">
+                    <h3 class="text-xl font-semibold mb-3">Fruit Prices</h3>
+                    <pre><code class="language-javascript">
+const fruit = 'banana';
+let price;
+
+switch (fruit.toLowerCase()) { // Convert to lowercase for case-insensitive comparison
+    case 'apple':
+        price = 0.99;
+        break;
+    case 'banana':
+        price = 0.59;
+        break;
+    case 'orange':
+        price = 0.79;
+        break;
+    case 'mango':
+    case 'papaya': // Multiple cases with the same action
+        price = 1.29;
+        break;
+    default:
+        price = 'Price not available';
 }
-console.log("Loop executed with continue.");
-    </pre>
-  </section>
 
-  <!-- Slide 5: Summary -->
-  <section class="slide" id="slide5">
-    <h2>Summary</h2>
-    <ul>
-      <li><code>break</code> exits the loop completely.</li>
-      <li><code>continue</code> skips the current iteration and moves to the next.</li>
-      <li>Both help in writing efficient and clean loop logic.</li>
-    </ul>
-  </section>
-
-
-
-  <!-- Navigation Buttons -->
-  <div class="navigation">
-    <button class="nav-button" id="prevButton">Previous</button>
-    <button class="nav-button" id="nextButton">Next</button>
-  </div>
-
-  <script>
-    let currentSlide = 1;
-    const totalSlides = document.querySelectorAll('.slide').length;
-
-    document.getElementById('prevButton').addEventListener('click', function() {
-      changeSlide(currentSlide - 1);
-    });
-    document.getElementById('nextButton').addEventListener('click', function() {
-      changeSlide(currentSlide + 1);
-    });
-
-    document.addEventListener('keydown', function(event) {
-      if (event.key === 'ArrowRight' || event.key === ' ') {
-        changeSlide(currentSlide + 1);
-      } else if (event.key === 'ArrowLeft') {
-        changeSlide(currentSlide - 1);
-      }
-    });
-
-    function changeSlide(n) {
-      if (n < 1 || n > totalSlides) return;
-      document.getElementById('slide' + currentSlide).classList.remove('active');
-      currentSlide = n;
-      document.getElementById('slide' + currentSlide).classList.add('active');
+console.log(`${fruit} costs $${price} per pound`); // Outputs: "banana costs $0.59 per pound"</code></pre>
+                </div>
+                
+                <div class="card">
+                    <h3 class="text-xl font-semibold mb-3">Key Points</h3>
+                    <ul class="list-disc pl-6">
+                        <li class="mb-2">Switch statements work with string values</li>
+                        <li class="mb-2">The expression can include method calls (<code>fruit.toLowerCase()</code>)</li>
+                        <li class="mb-2">Multiple case values (mango, papaya) can share the same code block</li>
+                        <li class="mb-2">Case comparisons are strict (===), so type matters</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="flex justify-between mt-4">
+                <button class="btn prev-btn">Previous</button>
+                <button class="btn next-btn">Next</button>
+            </div>
+        </div>
+        
+        <!-- Slide 7: Example 3 - Fallthrough -->
+        <div class="slide" data-slide="7">
+            <div class="slide-content">
+                <h2 class="text-3xl font-bold mb-6">Example 3: Fallthrough Behavior</h2>
+                
+                <div class="card mb-6">
+                    <h3 class="text-xl font-semibold mb-3">Days in Month</h3>
+                    <pre><code class="language-javascript">
+function getDaysInMonth(month, year) {
+    let days;
+    
+    switch (month) {
+        case 1: // January
+        case 3: // March
+        case 5: // May
+        case 7: // July
+        case 8: // August
+        case 10: // October
+        case 12: // December
+            days = 31;
+            break;
+            
+        case 4: // April
+        case 6: // June
+        case 9: // September
+        case 11: // November
+            days = 30;
+            break;
+            
+        case 2: // February
+            // Check for leap year
+            if ((year % 4 === 0 && year % 100 !== 0) || year % 400 === 0) {
+                days = 29;
+            } else {
+                days = 28;
+            }
+            break;
+            
+        default:
+            days = 'Invalid month';
     }
-  </script>
+    
+    return days;
+}
+
+console.log(getDaysInMonth(2, 2024)); // Outputs: 29 (2024 is a leap year)</code></pre>
+                </div>
+                
+                <div class="card">
+                    <h3 class="text-xl font-semibold mb-3">Key Points</h3>
+                    <ul class="list-disc pl-6">
+                        <li class="mb-2">Intentional fallthrough is useful for case groups that share the same output</li>
+                        <li class="mb-2">Each case group ends with a break to prevent unintended fallthrough</li>
+                        <li class="mb-2">Complex logic (leap year calculation) can be included within case blocks</li>
+                        <li class="mb-2">Return statements also exit the switch, even without break</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="flex justify-between mt-4">
+                <button class="btn prev-btn">Previous</button>
+                <button class="btn next-btn">Next</button>
+            </div>
+        </div>
+        
+        <!-- Slide 8: Example 4 - Default Case -->
+        <div class="slide" data-slide="8">
+            <div class="slide-content">
+                <h2 class="text-3xl font-bold mb-6">Example 4: Default Case & Common Patterns</h2>
+                
+                <div class="card mb-6">
+                    <h3 class="text-xl font-semibold mb-3">Grade Calculator</h3>
+                    <pre><code class="language-javascript">
+function getGradeFeedback(grade) {
+    let feedback;
+    
+    switch (true) { // Evaluating expressions with true allows for range checking
+        case grade >= 90:
+            feedback = 'Excellent! You got an A.';
+            break;
+        case grade >= 80:
+            feedback = 'Good job! You got a B.';
+            break;
+        case grade >= 70:
+            feedback = 'You got a C. Keep working!';
+            break;
+        case grade >= 60:
+            feedback = 'You got a D. You need to study more.';
+            break;
+        case grade >= 0:
+            feedback = 'You failed with an F. Please seek help.';
+            break;
+        default:
+            feedback = 'Invalid grade entered.';
+    }
+    
+    return feedback;
+}
+
+console.log(getGradeFeedback(85)); // Outputs: "Good job! You got a B."</code></pre>
+                </div>
+                
+                <div class="card">
+                    <h3 class="text-xl font-semibold mb-3">Advanced Switch Patterns</h3>
+                    <ul class="list-disc pl-6">
+                        <li class="mb-2"><strong>Using <code>switch(true)</code>:</strong> Allows evaluating ranges by checking which case condition returns true first</li>
+                        <li class="mb-2"><strong>Default placement:</strong> Can be placed anywhere in the switch, but conventionally at the end</li>
+                        <li class="mb-2"><strong>Early returns:</strong> Using return statements inside cases eliminates the need for break</li>
+                        <li class="mb-2"><strong>Validation:</strong> Default case is useful for input validation and error handling</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="flex justify-between mt-4">
+                <button class="btn prev-btn">Previous</button>
+                <button class="btn next-btn">Next</button>
+            </div>
+        </div>
+        
+        <!-- Slide 9: Common Pitfalls -->
+        <div class="slide" data-slide="9">
+            <div class="slide-content">
+                <h2 class="text-3xl font-bold mb-6">Common Pitfalls & Best Practices</h2>
+                
+                <div class="card mb-6">
+                    <h3 class="text-xl font-semibold mb-3">Forgetting Break Statements</h3>
+                    <pre><code class="language-javascript">
+// Problem: Missing break statements
+switch (color) {
+    case 'red':
+        console.log('Stop!');
+        // Missing break - will fall through to the next case
+    case 'yellow':
+        console.log('Caution!');
+        // Missing break - will fall through to the next case
+    case 'green':
+        console.log('Go!');
+        break;
+}
+
+// If color is 'red', this will output:
+// "Stop!"
+// "Caution!"
+// "Go!"</code></pre>
+                </div>
+                
+                <div class="card mb-6">
+                    <h3 class="text-xl font-semibold mb-3">Best Practices</h3>
+                    <ul class="list-disc pl-6">
+                        <li class="mb-2">Always include <code>break</code> statements unless fallthrough is intentional</li>
+                        <li class="mb-2">Comment intentional fallthrough cases to make your intention clear</li>
+                        <li class="mb-2">Consider using object literals or maps for simple value mappings instead of switch</li>
+                        <li class="mb-2">Always include a default case to handle unexpected inputs</li>
+                        <li class="mb-2">Keep case statements simple; move complex logic to separate functions</li>
+                    </ul>
+                </div>
+                
+                <div class="card">
+                    <h3 class="text-xl font-semibold mb-3">Alternative Pattern: Object Lookup</h3>
+                    <pre><code class="language-javascript">
+// Instead of switch, you can use object lookup for simple mappings
+const fruitPrices = {
+    apple: 0.99,
+    banana: 0.59,
+    orange: 0.79,
+    mango: 1.29,
+    papaya: 1.29
+};
+
+const price = fruitPrices[fruit.toLowerCase()] || 'Price not available';
+console.log(`${fruit} costs $${price} per pound`);</code></pre>
+                </div>
+            </div>
+            <div class="flex justify-between mt-4">
+                <button class="btn prev-btn">Previous</button>
+                <button class="btn next-btn">Next</button>
+            </div>
+        </div>
+        
+        <!-- Slide 10: Quiz Introduction -->
+        <div class="slide" data-slide="10">
+            <div class="slide-content flex flex-col items-center justify-center text-center">
+                <h2 class="text-3xl font-bold mb-6">Test Your Knowledge!</h2>
+                <div class="w-24 h-24 flex items-center justify-center mb-6">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-full h-full">
+                        <path fill="var(--primary-color)" d="M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M12,2C6.48,2 2,6.48 2,12C2,17.52 6.48,22 12,22C17.52,22 22,17.52 22,12C22,6.48 17.52,2 12,2M11,16.5L6.5,12L7.91,10.59L11,13.67L16.59,8.09L18,9.5L11,16.5Z" />
+                    </svg>
+                </div>
+                <p class="text-xl mb-8">Let's test your understanding of switch statements with a short quiz.</p>
+                <p class="mb-6">You'll face 5 questions about switch statements and their usage.</p>
+                <p class="mb-2">Ready to challenge yourself?</p>
+                <button class="btn start-quiz-btn px-8 py-3 mt-6">Start Quiz</button>
+            </div>
+            <div class="flex justify-between mt-4">
+                <button class="btn prev-btn">Previous</button>
+                <button class="btn next-btn opacity-0 cursor-default">Next</button>
+            </div>
+        </div>
+        
+        <!-- Slide 11: Quiz Question 1 -->
+        <div class="slide" data-slide="11">
+            <div class="slide-content">
+                <h2 class="text-2xl font-bold mb-6">Question 1</h2>
+                <div class="card mb-6">
+                    <p class="text-lg mb-4">What happens if you omit the <code>break</code> statement in a switch case?</p>
+                    <div class="quiz-option" data-option="1" data-question="11">
+                        <p>A. The switch statement will throw an error</p>
+                    </div>
+                    <div class="quiz-option" data-option="2" data-question="11">
+                        <p>B. The switch statement will automatically exit</p>
+                    </div>
+                    <div class="quiz-option" data-option="3" data-question="11">
+                        <p>C. The code will continue to execute the next case</p>
+                    </div>
+                    <div class="quiz-option" data-option="4" data-question="11">
+                        <p>D. The default case will always execute</p>
+                    </div>
+                </div>
+                <div id="feedback-11" class="hidden card bg-green-100 dark:bg-green-900 border-green-500">
+                    <p class="text-lg"><span class="font-bold">Correct!</span> Without a break statement, execution will "fall through" to the next case, regardless of whether that case matches the expression.</p>
+                </div>
+            </div>
+            <div class="flex justify-between mt-4">
+                <button class="btn prev-btn">Previous</button>
+                <button class="btn next-btn" id="next-11" disabled>Next</button>
+            </div>
+        </div>
+        
+        <!-- Slide 12: Quiz Question 2 -->
+        <div class="slide" data-slide="12">
+            <div class="slide-content">
+                <h2 class="text-2xl font-bold mb-6">Question 2</h2>
+                <div class="card mb-6">
+                    <p class="text-lg mb-4">Which of the following can be used as the expression in a switch statement?</p>
+                    <div class="quiz-option" data-option="1" data-question="12">
+                        <p>A. Strings and numbers only</p>
+                    </div>
+                    <div class="quiz-option" data-option="2" data-question="12">
+                        <p>B. Any expression that returns a value</p>
+                    </div>
+                    <div class="quiz-option" data-option="3" data-question="12">
+                        <p>C. Only boolean expressions</p>
+                    </div>
+                    <div class="quiz-option" data-option="4" data-question="12">
+                        <p>D. Only variables, not function calls</p>
+                    </div>
+                </div>
+                <div id="feedback-12" class="hidden card bg-green-100 dark:bg-green-900 border-green-500">
+                    <p class="text-lg"><span class="font-bold">Correct!</span> A switch statement can evaluate any expression that returns a value, including variables, function calls, or arithmetic operations.</p>
+                </div>
+            </div>
+            <div class="flex justify-between mt-4">
+                <button class="btn prev-btn">Previous</button>
+                <button class="btn next-btn" id="next-12" disabled>Next</button>
+            </div>
+        </div>
+        
+        <!-- Slide 13: Quiz Question 3 -->
+        <div class="slide" data-slide="13">
+            <div class="slide-content">
+                <h2 class="text-2xl font-bold mb-6">Question 3</h2>
+                <div class="card mb-6">
+                    <p class="text-lg mb-4">What is the purpose of the <code>default</code> case in a switch statement?</p>
+                    <div class="quiz-option" data-option="1" data-question="13">
+                        <p>A. It's required syntax and must be included in every switch statement</p>
+                    </div>
+                    <div class="quiz-option" data-option="2" data-question="13">
+                        <p>B. It executes only if all other cases have been executed</p>
+                    </div>
+                    <div class="quiz-option" data-option="3" data-question="13">
+                        <p>C. It executes when none of the case values match the switch expression</p>
+                    </div>
+                    <div class="quiz-option" data-option="4" data-question="13">
+                        <p>D. It specifies the default value of the switch expression</p>
+                    </div>
+                </div>
+                <div id="feedback-13" class="hidden card bg-green-100 dark:bg-green-900 border-green-500">
+                    <p class="text-lg"><span class="font-bold">Correct!</span> The default case executes when none of the case values match the expression being evaluated. It's optional but recommended for handling unexpected inputs.</p>
+                </div>
+            </div>
+            <div class="flex justify-between mt-4">
+                <button class="btn prev-btn">Previous</button>
+                <button class="btn next-btn" id="next-13" disabled>Next</button>
+            </div>
+        </div>
+        
+        <!-- Slide 14: Quiz Question 4 -->
+        <div class="slide" data-slide="14">
+            <div class="slide-content">
+                <h2 class="text-2xl font-bold mb-6">Question 4</h2>
+                <div class="card mb-6">
+                    <p class="text-lg mb-4">What type of comparison does switch use when matching cases?</p>
+                    <div class="quiz-option" data-option="1" data-question="14">
+                        <p>A. Loose equality (==)</p>
+                    </div>
+                    <div class="quiz-option" data-option="2" data-question="14">
+                        <p>B. Strict equality (===)</p>
+                    </div>
+                    <div class="quiz-option" data-option="3" data-question="14">
+                        <p>C. Greater than or equal to (>=)</p>
+                    </div>
+                    <div class="quiz-option" data-option="4" data-question="14">
+                        <p>D. It doesn't use comparison operators</p>
+                    </div>
+                </div>
+                <div id="feedback-14" class="hidden card bg-green-100 dark:bg-green-900 border-green-500">
+                    <p class="text-lg"><span class="font-bold">Correct!</span> Switch statements use strict equality (===) when comparing the expression with case values, meaning both value and type must match.</p>
+                </div>
+            </div>
+            <div class="flex justify-between mt-4">
+                <button class="btn prev-btn">Previous</button>
+                <button class="btn next-btn" id="next-14" disabled>Next</button>
+            </div>
+        </div>
+        
+        <!-- Slide 15: Quiz Question 5 -->
+        <div class="slide" data-slide="15">
+            <div class="slide-content">
+                <h2 class="text-2xl font-bold mb-6">Question 5</h2>
+                <div class="card mb-6">
+                    <p class="text-lg mb-4">Which of the following accurately describes a potential disadvantage of switch statements?</p>
+                    <div class="quiz-option" data-option="1" data-question="15">
+                        <p>A. They can only handle a maximum of 10 cases</p>
+                    </div>
+                    <div class="quiz-option" data-option="2" data-question="15">
+                        <p>B. They are always slower than if-else statements</p>
+                    </div>
+                    <div class="quiz-option" data-option="3" data-question="15">
+                        <p>C. They only work with primitive data types</p>
+                    </div>
+                    <div class="quiz-option" data-option="4" data-question="15">
+                        <p>D. Forgetting break statements can lead to unexpected behavior</p>
+                    </div>
+                </div>
+                <div id="feedback-15" class="hidden card bg-green-100 dark:bg-green-900 border-green-500">
+                    <p class="text-lg"><span class="font-bold">Correct!</span> Forgetting to include break statements can lead to unintentional fallthrough, causing multiple case blocks to execute when only one was intended.</p>
+                </div>
+            </div>
+            <div class="flex justify-between mt-4">
+                <button class="btn prev-btn">Previous</button>
+                <button class="btn next-btn" id="next-15" disabled>Next</button>
+            </div>
+        </div>
+        
+        <!-- Slide 16: Quiz Results -->
+        <div class="slide" data-slide="16">
+            <div class="slide-content">
+                <h2 class="text-3xl font-bold mb-6">Quiz Results</h2>
+                <div class="card mb-6 text-center">
+                    <h3 class="text-2xl font-bold mb-3">Your Score:</h3>
+                    <div class="text-6xl font-bold mb-4 text-primary-color" id="quizScore">0/5</div>
+                    <div id="scoreMessage" class="text-xl mb-4">Take the quiz to see your results!</div>
+                    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-6 mb-6">
+                        <div id="scoreBar" class="bg-primary-color h-6 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3 class="text-2xl font-bold mb-4">Key Takeaways</h3>
+                    <ul class="list-disc pl-6">
+                        <li class="mb-2">Switch statements provide a clear way to handle multiple conditions for a single variable</li>
+                        <li class="mb-2">Always include break statements unless fallthrough is intentional</li>
+                        <li class="mb-2">The default case handles unexpected inputs and is a best practice</li>
+                        <li class="mb-2">Switch uses strict equality (===) when comparing values</li>
+                        <li class="mb-2">For simple value mappings, consider object literals as an alternative</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="flex justify-between mt-4">
+                <button class="btn prev-btn">Previous</button>
+                <button class="btn restart-btn">Restart</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize variables
+        let currentSlide = 1;
+        const totalSlides = document.querySelectorAll('.slide').length;
+        
+        // Correct answers for the quiz
+        const correctAnswers = {
+            11: 3, // Question 1: C
+            12: 2, // Question 2: B
+            13: 3, // Question 3: C
+            14: 2, // Question 4: B
+            15: 4  // Question 5: D
+        };
+        
+        // Store user's answers
+        const quizAnswers = {
+            11: null,
+            12: null,
+            13: null,
+            14: null,
+            15: null
+        };
+        
+        // Set up dark mode detection
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+        
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+            if (event.matches) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        });
+        
+        // Initialize step indicators
+        const stepIndicatorsContainer = document.getElementById('stepIndicators');
+        for (let i = 1; i <= totalSlides; i++) {
+            const indicator = document.createElement('div');
+            indicator.classList.add('step-indicator');
+            if (i === 1) indicator.classList.add('active');
+            stepIndicatorsContainer.appendChild(indicator);
+        }
+        
+        // Initialize syntax highlighting
+        document.querySelectorAll('pre code').forEach((block) => {
+            hljs.highlightBlock(block);
+        });
+        
+        // Update progress bar
+        function updateProgressBar() {
+            const progressBar = document.getElementById('progressBar');
+            const progress = ((currentSlide - 1) / (totalSlides - 1)) * 100;
+            progressBar.style.width = `${progress}%`;
+            
+            // Update step indicators
+            const indicators = document.querySelectorAll('.step-indicator');
+            indicators.forEach((indicator, index) => {
+                if (index + 1 === currentSlide) {
+                    indicator.classList.add('active');
+                } else {
+                    indicator.classList.remove('active');
+                }
+            });
+        }
+        
+        // Navigation function - Next slide
+        function goToNextSlide() {
+            if (currentSlide < totalSlides) {
+                document.querySelector(`.slide[data-slide="${currentSlide}"]`).classList.remove('active');
+                currentSlide++;
+                document.querySelector(`.slide[data-slide="${currentSlide}"]`).classList.add('active');
+                updateProgressBar();
+                
+                // If we're on the results slide, calculate and display the score
+                if (currentSlide === 16) {
+                    calculateResults();
+                }
+            }
+        }
+        
+        // Navigation function - Previous slide
+        function goToPrevSlide() {
+            if (currentSlide > 1) {
+                document.querySelector(`.slide[data-slide="${currentSlide}"]`).classList.remove('active');
+                currentSlide--;
+                document.querySelector(`.slide[data-slide="${currentSlide}"]`).classList.add('active');
+                updateProgressBar();
+            }
+        }
+        
+        // Restart presentation
+        function restartPresentation() {
+            document.querySelector(`.slide[data-slide="${currentSlide}"]`).classList.remove('active');
+            currentSlide = 1;
+            document.querySelector(`.slide[data-slide="${currentSlide}"]`).classList.add('active');
+            updateProgressBar();
+            
+            // Reset quiz answers
+            for (let key in quizAnswers) {
+                quizAnswers[key] = null;
+            }
+            
+            // Reset quiz option selections
+            document.querySelectorAll('.quiz-option').forEach(option => {
+                option.classList.remove('selected', 'correct', 'incorrect');
+            });
+            
+            // Hide feedback elements
+            document.querySelectorAll('[id^="feedback-"]').forEach(element => {
+                element.classList.add('hidden');
+            });
+            
+            // Disable next buttons for quiz questions
+            for (let i = 11; i <= 15; i++) {
+                document.getElementById(`next-${i}`).disabled = true;
+            }
+        }
+        
+        // Quiz option selection
+        function selectQuizOption(questionNumber, optionNumber) {
+            // Store the selected answer
+            quizAnswers[questionNumber] = optionNumber;
+            
+            // Update visual state of options
+            const options = document.querySelectorAll(`.slide[data-slide="${questionNumber}"] .quiz-option`);
+            options.forEach(option => {
+                option.classList.remove('selected', 'correct', 'incorrect');
+            });
+            
+            const selectedOption = document.querySelector(`.slide[data-slide="${questionNumber}"] .quiz-option[data-option="${optionNumber}"]`);
+            selectedOption.classList.add('selected');
+            
+            // Check if answer is correct and update class
+            if (optionNumber === correctAnswers[questionNumber]) {
+                selectedOption.classList.add('correct');
+            } else {
+                selectedOption.classList.add('incorrect');
+                // Highlight the correct answer
+                document.querySelector(`.slide[data-slide="${questionNumber}"] .quiz-option[data-option="${correctAnswers[questionNumber]}"]`).classList.add('correct');
+            }
+            
+            // Show feedback
+            const feedback = document.getElementById(`feedback-${questionNumber}`);
+            feedback.classList.remove('hidden');
+            
+            // Enable the next button
+            document.getElementById(`next-${questionNumber}`).disabled = false;
+        }
+        
+        // Calculate quiz results
+        function calculateResults() {
+            let score = 0;
+            
+            // Check answers against correct answers
+            for (let question in quizAnswers) {
+                if (quizAnswers[question] === correctAnswers[question]) {
+                    score++;
+                }
+            }
+            
+            // Update the score display
+            document.getElementById('quizScore').textContent = `${score}/5`;
+            const scorePercentage = (score / 5) * 100;
+            document.getElementById('scoreBar').style.width = `${scorePercentage}%`;
+            
+            // Set a message based on the score
+            const scoreMessage = document.getElementById('scoreMessage');
+            if (score === 5) {
+                scoreMessage.textContent = "Perfect! You're a switch statement expert!";
+            } else if (score >= 3) {
+                scoreMessage.textContent = "Good job! You have a solid understanding of switch statements.";
+            } else {
+                scoreMessage.textContent = "You might want to review the material again to strengthen your understanding.";
+            }
+        }
+        
+        // Add event listeners to navigation buttons
+        document.querySelectorAll('.next-btn').forEach(button => {
+            button.addEventListener('click', goToNextSlide);
+        });
+        
+        document.querySelectorAll('.prev-btn').forEach(button => {
+            button.addEventListener('click', goToPrevSlide);
+        });
+        
+        // Start quiz button (slide 10)
+        document.querySelector('.start-quiz-btn').addEventListener('click', goToNextSlide);
+        
+        // Restart button (slide 16)
+        document.querySelector('.restart-btn').addEventListener('click', restartPresentation);
+        
+        // Quiz option selection
+        document.querySelectorAll('.quiz-option').forEach(option => {
+            option.addEventListener('click', function() {
+                const questionNumber = parseInt(this.getAttribute('data-question'));
+                const optionNumber = parseInt(this.getAttribute('data-option'));
+                selectQuizOption(questionNumber, optionNumber);
+            });
+        });
+        
+        // Initialize progress bar
+        updateProgressBar();
+    });
+    </script>
 </body>
 </html>
